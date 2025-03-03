@@ -1,5 +1,6 @@
 add_executable(${ProjectName}
     main.c
+    freeRTOSHelpers.c
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -8,7 +9,7 @@ target_include_directories(${ProjectName} PRIVATE
 
 target_link_libraries(${ProjectName} 
     pico_stdlib 
-    FreeRTOS-Kernel-Heap4 
+    FreeRTOS-Kernel
     )
 
 pico_add_extra_outputs(${ProjectName})

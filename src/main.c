@@ -21,7 +21,10 @@ int main()
 {
     stdio_init_all();
 
-    xTaskCreate(led_task, "LED_Task", 256, NULL, 1, NULL);
+
+    StaticTask_t xTaskBuffer;
+    StackType_t xStackBuffer[32*1000];
+    xTaskCreateStatic(led_task, "LED_Task", 256, NULL, 1, xStackBuffer, &xTaskBuffer);
     vTaskStartScheduler();
 
     while(1){};

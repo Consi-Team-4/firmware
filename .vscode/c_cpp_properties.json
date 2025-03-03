@@ -4,6 +4,7 @@
             "name": "Pico",
             "includePath": [
                 "${workspaceFolder}/**",
+                "lib/FreeRTOS-Kernel/include/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/**"
             ],
             "forcedInclude": [
