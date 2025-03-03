@@ -5,5 +5,9 @@ Unmodified, this project will spawn a single task to rapidly blink the LED on an
 
 
 # Note from Gideon
-The initial settings were're working correctly for some reason. I think related to freeRTOS settings changing.
+The initial settings weren't working correctly for some reason. I think related to freeRTOS settings changing.
 Fixed the freeRTOSConfig.h
+
+I added pico-i2c-dma so i2c transactions don't block the rest of our code
+
+Dynamic memory allocation is enabled (pico-i2c-dma uses it and I didn't feel like rewriting that), but static allocation is generally preferred where reasonable.

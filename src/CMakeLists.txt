@@ -1,6 +1,8 @@
 add_executable(${ProjectName}
-    main.c
+    main.cpp
     freeRTOSHelpers.c
+    LSM6DSOX.cpp
+    imu.cpp
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -9,7 +11,8 @@ target_include_directories(${ProjectName} PRIVATE
 
 target_link_libraries(${ProjectName} 
     pico_stdlib 
-    FreeRTOS-Kernel
+    FreeRTOS-Kernel-Heap4
+    i2c_dma
     )
 
 pico_add_extra_outputs(${ProjectName})

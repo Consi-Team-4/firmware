@@ -73,8 +73,8 @@
  // Which heap (or whether to use a heap at all) is configured by "FreeRTOS-Kernel..." in CMakeLists.txt
  // For a heap, use FreeRTOS-Kernel-HeapN where N is the number of the heap
  // For no heap, use FreeRTOS-Kernel
- #define configSUPPORT_DYNAMIC_ALLOCATION        0
- #define configTOTAL_HEAP_SIZE                   0//(128*1024)
+ #define configSUPPORT_DYNAMIC_ALLOCATION        1
+ #define configTOTAL_HEAP_SIZE                   (128*1024)
  #define configAPPLICATION_ALLOCATED_HEAP        0
  
  /* Hook function related definitions. */

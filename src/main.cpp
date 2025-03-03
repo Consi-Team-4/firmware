@@ -2,9 +2,18 @@
 #include "task.h"
 #include <stdio.h>
 #include "pico/stdlib.h"
+#include "imu.h"
 
 
-void led_task()
+// The i2c_dma_* functions block the calling task, but allow other tasks to continue running.
+// Eg. while waiting on the i2c transfer from the IMU, we can also communicate with the lidar or do calculations
+
+// Also, keep in mind that we have 2 cores. So something can be running simultaniously with an ISR.
+// Pretty sure that as long as we do all of our setup code on one core, we'll be fine.
+
+
+
+void led_task(void *)
 {   
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
@@ -18,9 +27,10 @@ void led_task()
 }
 
 int main()
-{
+{    
     stdio_init_all();
 
+    imuSetup();
 
     StaticTask_t xTaskBuffer;
     StackType_t xStackBuffer[32*1000];
