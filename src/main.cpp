@@ -23,7 +23,6 @@ void ledTaskFunc(void *)
         vTaskDelay(100);
         gpio_put(LED_PIN, 0);
         vTaskDelay(100);
-        printf("Blink\n");
     }
 }
 
@@ -31,7 +30,12 @@ int main()
 {    
     stdio_init_all();
 
-    //imuSetup();
+    uint32_t start_ms = to_ms_since_boot(get_absolute_time());
+    while ( to_ms_since_boot(get_absolute_time()) < start_ms+4000) {
+        printf("Waiting...\n");
+    }
+
+    imuSetup();
 
     StaticTask_t taskBuffer;
     StackType_t stackBuffer[1000];
