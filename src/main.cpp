@@ -31,11 +31,11 @@ int main()
 {    
     stdio_init_all();
 
-    while (true) {
+    while(true) {
         printf("Test");
     }
 
-    imuSetup();
+    //imuSetup();
 
     StaticTask_t xTaskBuffer;
     StackType_t xStackBuffer[4*1000];
