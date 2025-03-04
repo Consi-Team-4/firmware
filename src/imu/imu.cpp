@@ -35,8 +35,8 @@ TaskHandle_t imuTask;
 
 
 // Can't pass 64bit data directly in task notification
-// So saving it here so the 
-static volatile uint64_t imuMicros;
+// Saving it here so the task can access it
+static volatile uint64_t imuIrqMicros;
 
 
 static void imuDataReadyIrqCallback(void);
@@ -86,7 +86,7 @@ static void imuDataReadyIrqCallback(void) {
         gpio_acknowledge_irq(INT1, GPIO_IRQ_EDGE_RISE); // Acknowledge the request since we're responding to it
 
         // Get time as soon as data is ready
-        imuMicros = to_us_since_boot(get_absolute_time());
+        imuIrqMicros = to_us_since_boot(get_absolute_time());
         
         // Notify imu task so it can handle the I2C
         vTaskNotifyGiveFromISR(imuTask, &higherPriorityTaskWoken);
@@ -106,10 +106,12 @@ static void imuTaskFunc (void *) {
             // For now, just printing values
             // Reading temperature too for the hell of it
 
+            uint64_t micros = imuIrqMicros; // Save the current time in case it gets overwritten
+
             int16_t data[7];
             float temp, Gx, Gy, Gz, Ax, Ay, Az;
 
-            if (readRegisters(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
+            if (imu.readRegisters(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
                 Gx = data[1] * 2000.0 / LSM6DSOX_FSR;
                 Gy = data[2] * 2000.0 / LSM6DSOX_FSR;
@@ -127,7 +129,7 @@ static void imuTaskFunc (void *) {
                 Az = NAN;
             }
 
-            printf("%10lluuus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuMicros, Ax, Ay, Az, Gx, Gy, Gz);
+            printf("%10lluuus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, Ax, Ay, Az, Gx, Gy, Gz);
 
         }
     }
