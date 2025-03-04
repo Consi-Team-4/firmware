@@ -33,8 +33,8 @@ int main()
     imuSetup();
 
     StaticTask_t xTaskBuffer;
-    StackType_t xStackBuffer[32*1000];
-    xTaskCreateStatic(led_task, "LED_Task", 256, NULL, 1, xStackBuffer, &xTaskBuffer);
+    StackType_t xStackBuffer[4*1000];
+    xTaskCreateStatic(led_task, "LED_Task", sizeof(xStackBuffer), NULL, 1, xStackBuffer, &xTaskBuffer);
     vTaskStartScheduler();
 
     while(1){};

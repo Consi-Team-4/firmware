@@ -3,6 +3,7 @@
 
 
 #define LSM6DSOX_ADDRESS        0x6A
+#define LSM6DSOX_FSR            32768
 
 #define REG_FUNC_CFG_ACCESS     0x01 // Required for embedded functions or sensor hub functionality
 #define REG_PIN_CTRL            0x02
