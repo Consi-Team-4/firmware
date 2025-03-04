@@ -13,7 +13,7 @@
 
 
 
-void led_task(void *)
+void ledTaskFunc(void *)
 {   
     const uint LED_PIN = PICO_DEFAULT_LED_PIN;
     gpio_init(LED_PIN);
@@ -31,16 +31,16 @@ int main()
 {    
     stdio_init_all();
 
-    while(true) {
-        printf("Test");
-    }
+    // while(true) {
+    //     printf("Test");
+    // }
 
     //imuSetup();
 
-    StaticTask_t xTaskBuffer;
-    StackType_t xStackBuffer[4*1000];
-    xTaskCreateStatic(led_task, "LED_Task", sizeof(xStackBuffer), NULL, 1, xStackBuffer, &xTaskBuffer);
+    // StaticTask_t xTaskBuffer;
+    // StackType_t xStackBuffer[4*1000];
+    // xTaskCreateStatic(ledTaskFunc, "LED_Task", sizeof(xStackBuffer), NULL, 1, xStackBuffer, &xTaskBuffer);
+    TaskHandle_t ledTask;
+    xTaskCreate(ledTaskFunc, "ledTask", 1000, NULL, 10, &ledTask);
     vTaskStartScheduler();
-
-    while(1){};
 }
