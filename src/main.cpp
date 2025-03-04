@@ -31,16 +31,13 @@ int main()
 {    
     stdio_init_all();
 
-    // while(true) {
-    //     printf("Test");
-    // }
-
     //imuSetup();
 
-    // StaticTask_t xTaskBuffer;
-    // StackType_t xStackBuffer[4*1000];
-    // xTaskCreateStatic(ledTaskFunc, "LED_Task", sizeof(xStackBuffer), NULL, 1, xStackBuffer, &xTaskBuffer);
-    TaskHandle_t ledTask;
-    xTaskCreate(ledTaskFunc, "ledTask", 1000, NULL, 10, &ledTask);
+    StaticTask_t taskBuffer;
+    StackType_t stackBuffer[1000];
+    TaskHandle_t ledTask = xTaskCreateStatic(ledTaskFunc, "ledTask", sizeof(stackBuffer)/sizeof(StackType_t), NULL, 10, stackBuffer, &taskBuffer);
+
+    // TaskHandle_t ledTask;
+    // xTaskCreate(ledTaskFunc, "ledTask", 1000, NULL, 10, &ledTask);
     vTaskStartScheduler();
 }
