@@ -12,7 +12,7 @@ if (EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD arduino_nano_rp2040_connect CACHE STRING "Board type")
 
 cmake_minimum_required(VERSION 3.12)
 
