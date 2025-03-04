@@ -48,6 +48,8 @@
         "tuple": "cpp",
         "type_traits": "cpp",
         "utility": "cpp",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "error.h": "c",
+        "debug.h": "c"
     }
 }

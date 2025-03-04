@@ -1,8 +1,8 @@
 add_executable(${ProjectName}
-    main.cpp
+    main.c
     freeRTOSHelpers.c
-    imu/LSM6DSOX.cpp
-    imu/imu.cpp
+    debug.c
+    imu/imu.c
 )
 
 target_include_directories(${ProjectName} PRIVATE

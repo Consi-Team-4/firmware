@@ -30,10 +30,14 @@ int main()
 {    
     stdio_init_all();
 
+    // Wait a few seconds before doing anything so that the serial monitor has time to load.
+    // Otherwise I can't see what happens during the setup to debug :(
     uint32_t start_ms = to_ms_since_boot(get_absolute_time());
-    while ( to_ms_since_boot(get_absolute_time()) < start_ms+4000) {
+    while ( to_ms_since_boot(get_absolute_time()) < start_ms+3000) {
         printf("Waiting...\n");
+        sleep_ms(50);
     }
+    printf("Start ==========================================================================\n");
 
     imuSetup();
 
