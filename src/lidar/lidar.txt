@@ -1,0 +1,9 @@
+Going to try setup Lidar reading with UART
+No need to poll
+Need separate busses
+    - although we do have the pins and uart blocks for that
+    - Eg use pins D5 and D9
+Can raise speed to 921600 baud yeeeeesh
+
+
+RP2040 fifo is 9 bytes long, so setting up processing code should be fairly straightforward

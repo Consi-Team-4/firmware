@@ -23,12 +23,17 @@ void led_task(void *)
         vTaskDelay(100);
         gpio_put(LED_PIN, 0);
         vTaskDelay(100);
+        printf("Blink\n");
     }
 }
 
 int main()
 {    
     stdio_init_all();
+
+    while (true) {
+        printf("Test");
+    }
 
     imuSetup();
 
