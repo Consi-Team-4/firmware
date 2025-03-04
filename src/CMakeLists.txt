@@ -11,4 +11,10 @@ target_link_libraries(${ProjectName}
     FreeRTOS-Kernel-Heap4 
     )
 
+
+# Enable Stdio over usb
+pico_enable_stdio_uart(${ProjectName} 0)
+pico_enable_stdio_usb(${ProjectName} 1)
+
+# Needed to generate the UF2 or elf or something like that.
 pico_add_extra_outputs(${ProjectName})
