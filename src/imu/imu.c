@@ -28,14 +28,13 @@
 
 static i2c_dma_t *i2c_dma;
 
-StaticTask_t taskBuffer;
-StackType_t stackBuffer[1000];
-TaskHandle_t imuTask;
+static StaticTask_t taskBuffer;
+static StackType_t stackBuffer[1000];
 
 
 // Can't pass 64bit data directly in task notification
 // Saving it here so the task can access it
-static volatile uint64_t imuIrqMicros;
+//static volatile uint64_t imuIrqMicros;
 
 
 
@@ -54,12 +53,9 @@ static void imuTaskFunc(void *);
 
 
 void imuSetup () {
-    printf("Setting up IMU...\n");
-
     int res;
-    // res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
-    // printf("i2c_dma_init:\t%s\n", errorToString(res));
 
+    printf("Setting up IMU...\n");
 
     // Absolutely no problem here
     i2c_init(I2C_INST, 400*1000);
@@ -133,6 +129,9 @@ void imuSetup () {
 
 
     printf("Creating Task and setting up interrupt...\n");
+    res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
+    printf("i2c_dma_init:\t%s\n", errorToString(res));
+
 
     imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(stackBuffer)/sizeof(StackType_t), NULL, 20, stackBuffer, &taskBuffer);
 
@@ -223,7 +222,8 @@ static void imuDataReadyIrqCallback(void) {
 static void imuTaskFunc (void *) {
     // Wait for notification from ISR
     while (true) {
-        if (ulTaskNotifyTake(true, portMAX_DELAY)) {
+        if (ulTaskNotifyTake(true, 50)) {
+            printf("Yep\n");
             // For now, just printing values
             // Reading temperature too for the hell of it
 
@@ -251,6 +251,8 @@ static void imuTaskFunc (void *) {
             }
 
             printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, Ax, Ay, Az, Gx, Gy, Gz);
+        } else {
+            printf("Nope\n");
         }
     }
 }
