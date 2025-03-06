@@ -40,13 +40,15 @@
   * See http://www.freertos.org/a00110.html
   *----------------------------------------------------------*/
  
+
  /* Scheduler Related */
  #define configUSE_PREEMPTION                    1
  #define configUSE_TICKLESS_IDLE                 0
  #define configUSE_IDLE_HOOK                     0
  #define configUSE_TICK_HOOK                     0
- #define configTICK_RATE_HZ                      ( ( TickType_t ) 1000 )
- #define configMAX_PRIORITIES                    32
+ // #define configCPU_CLOCK_HZ                      ( 125 * 1000 * 1000 ) // If you change the CPU frequency, also update it here.
+ #define configTICK_RATE_HZ                      1000
+ #define configMAX_PRIORITIES                    5
  #define configMINIMAL_STACK_SIZE                ( configSTACK_DEPTH_TYPE ) 256
  #define configUSE_16_BIT_TICKS                  0
  
@@ -105,7 +107,7 @@
  */
  
  /* SMP port only */
- #define configNUM_CORES                         1
+ #define configNUM_CORES                         2
  #define configTICK_CORE                         0
  #define configRUN_MULTIPLE_PRIORITIES           0
  

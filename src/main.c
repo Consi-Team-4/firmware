@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 #include "imu.h"
+#include "servo.h"
 
 
 // The i2c_dma_* functions block the calling task, but allow other tasks to continue running.
@@ -26,6 +27,7 @@ int main()
     printf("Start ==========================================================================\n");
 
     imuSetup();
+    servoSetup();
 
     vTaskStartScheduler();
 }

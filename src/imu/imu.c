@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "semphr.h"
 
 #include "math.h"
 
@@ -37,12 +38,16 @@ static i2c_dma_t *i2c_dma;
 
 static StaticTask_t imuTaskBuffer;
 static StackType_t imuStackBuffer[1000];
-TaskHandle_t imuTask;
-
+static TaskHandle_t imuTask;
 
 // Can't pass 64bit data directly in task notification
 // Saving it here so the task can access it
 static volatile uint64_t imuIrqMicros;
+
+// Putting a mutex on this so it doesn't get overwritten while another task is reading it
+static imuData_t imuData;
+static StaticSemaphore_t imuDataMutexBuffer;
+static SemaphoreHandle_t imuDataMutex;
 
 
 
@@ -60,7 +65,7 @@ static void imuTaskFunc(void *);
 
 
 
-void imuSetup () {
+void imuSetup() {
     int res;
 
     printf("Setting up SDK I2C...\n");
@@ -119,13 +124,21 @@ void imuSetup () {
 
 
     printf("Creating Task...\n");
-    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 20, imuStackBuffer, &imuTaskBuffer);
+    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 4, imuStackBuffer, &imuTaskBuffer);
+
+    printf("Creating Mutex...\n");
+    imuDataMutex = xSemaphoreCreateMutexStatic(&imuDataMutexBuffer);
 
     printf("Initializing I2C DMA driver...\n");
     res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
     printf("i2c_dma_init:\t%s\n", errorToString(res));
 }
 
+void imuGetData(imuData_t *buf) {
+    xSemaphoreTake(imuDataMutex, portMAX_DELAY);
+    *buf = imuData;
+    xSemaphoreGive(imuDataMutex);
+}
 
 // Reading and writing to register using the regular i2c functions (needed for setup before the scheduler is started)
 static int readRegistersSDK(uint8_t address, uint8_t* data, size_t length) {
@@ -163,8 +176,6 @@ static int writeRegisterSDK(uint8_t address, uint8_t value) {
     
     return PICO_OK;
 }
-
-
 
 // Reading and writing to register using the pico-i2c-dma
 static int readRegistersDMA(uint8_t regAddress, uint8_t* buf, size_t length) {
@@ -217,30 +228,37 @@ static void imuTaskFunc(void *) {
             // For now, just printing values
             // Reading temperature too for the hell of it
 
-            uint64_t micros = imuIrqMicros; // Save the current time in case it gets overwritten
+            uint64_t tmpMicros = imuIrqMicros; // Save the current time in case it gets overwritten
 
             int16_t data[7];
-            float temp, Gx, Gy, Gz, Ax, Ay, Az;
+            float temp;
 
             if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
-                Gx = data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS;
-                Gy = data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS;
-                Gz = data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                Ax = data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS;
-                Ay = data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS;
-                Az = data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS;
+                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
+                imuData.micros = tmpMicros;
+                imuData.Gx = data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS;
+                imuData.Gy = data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS;
+                imuData.Gz = data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS;
+                imuData.Ax = data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS;
+                imuData.Ay = data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS;
+                imuData.Az = data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS;
+                xSemaphoreGive(imuDataMutex);
             } else {
                 temp = NAN;
-                Gx = NAN;
-                Gy = NAN;
-                Gz = NAN;
-                Ax = NAN;
-                Ay = NAN;
-                Az = NAN;
+                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
+                imuData.micros = tmpMicros;
+                imuData.Gx = NAN;
+                imuData.Gy = NAN;
+                imuData.Gz = NAN;
+                imuData.Ax = NAN;
+                imuData.Ay = NAN;
+                imuData.Az = NAN;
+                xSemaphoreGive(imuDataMutex);
             }
 
-            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, temp, Ax, Ay, Az, Gx, Gy, Gz);
+            // Don't need mutex to access because it's only ever written to in this task.
+            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
         }
     }
 }

@@ -3,6 +3,7 @@ add_executable(${ProjectName}
     freeRTOSHelpers.c
     debug.c
     imu/imu.c
+    servo.c
 )
 
 target_include_directories(${ProjectName} PRIVATE
@@ -12,6 +13,7 @@ target_include_directories(${ProjectName} PRIVATE
 
 target_link_libraries(${ProjectName} 
     pico_stdlib 
+    hardware_pwm # Not sure why this one needs to be specified separately
     FreeRTOS-Kernel-Heap4
     i2c_dma
     )

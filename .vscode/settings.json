@@ -52,6 +52,8 @@
         "error.h": "c",
         "debug.h": "c",
         "compare": "c",
-        "cstdint": "c"
+        "cstdint": "c",
+        "pwm.h": "c",
+        "gpio.h": "c"
     }
 }
