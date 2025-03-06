@@ -18,10 +18,16 @@
 // Goal is to get time, accelerometer data, and gyroscope data when triggered by interrupt.
 // These can then be passed to the kalman filter via a queue
 
+// For calibration purposes
+#define AXOFFS 0.035
+#define AYOFFS -0.028
+#define AZOFFS -0.034
+#define GXOFFS 0.5
+#define GYOFFS -0.9
+#define GZOFFS -0.7
 
 // Got pins from arduino nano rp2040 connect schematic
 #define INT1 24
-#define BUTTON 26
 #define I2C_SDA 12
 #define I2C_SCL 13
 // i2c0 is the i2c connected to pins 12 and 13
@@ -32,10 +38,6 @@ static i2c_dma_t *i2c_dma;
 static StaticTask_t imuTaskBuffer;
 static StackType_t imuStackBuffer[1000];
 TaskHandle_t imuTask;
-
-static StaticTask_t printTaskBuffer;
-static StackType_t printStackBuffer[1000];
-TaskHandle_t printTask;
 
 
 // Can't pass 64bit data directly in task notification
@@ -54,7 +56,6 @@ static int writeRegisterDMA(uint8_t regAddress, uint8_t value);
 
 static void imuDataReadyIrqCallback(void);
 static void imuTaskFunc(void *);
-static void printTaskFunc(void *);
 
 
 
@@ -107,17 +108,11 @@ void imuSetup () {
     gpio_init(INT1);
     gpio_set_dir(INT1, GPIO_IN);
 
-    // Initialize Button pin
-    gpio_init(BUTTON);
-    gpio_set_dir(BUTTON, GPIO_IN);
-    gpio_pull_up(BUTTON);
-
     // Hook up the IRQ
     irq_add_shared_handler(IO_IRQ_BANK0, imuDataReadyIrqCallback, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
 
     // Make the pin trigger the IRQ
     gpio_set_irq_enabled(INT1, GPIO_IRQ_EDGE_RISE, true);
-    gpio_set_irq_enabled(BUTTON, GPIO_IRQ_EDGE_FALL, true);
 
     // Enable IRQ
     irq_set_enabled(IO_IRQ_BANK0, true);
@@ -125,8 +120,6 @@ void imuSetup () {
 
     printf("Creating Task...\n");
     imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 20, imuStackBuffer, &imuTaskBuffer);
-    //printTask = xTaskCreateStatic(printTaskFunc, "printTask", sizeof(printStackBuffer)/sizeof(StackType_t), NULL, 20, printStackBuffer, &printTaskBuffer);
-
 
     printf("Initializing I2C DMA driver...\n");
     res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
@@ -196,17 +189,7 @@ static void imuDataReadyIrqCallback(void) {
 
     if (gpio_get_irq_event_mask(INT1) & GPIO_IRQ_EDGE_RISE) { // Trigger on INT1 rising edge
         gpio_acknowledge_irq(INT1, GPIO_IRQ_EDGE_RISE); // Acknowledge the request since we're responding to it
-        respond = true;
-        //printf("INT1 rising!\n");
-    }
 
-    if (gpio_get_irq_event_mask(BUTTON) & GPIO_IRQ_EDGE_FALL) {
-        gpio_acknowledge_irq(BUTTON, GPIO_IRQ_EDGE_FALL);
-        respond = true;
-        //printf("Button pressed!\n");
-    }
-
-    if (respond) {
         // Get time as soon as data is ready
         imuIrqMicros = to_us_since_boot(get_absolute_time());
         
@@ -241,12 +224,12 @@ static void imuTaskFunc(void *) {
 
             if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
-                Gx = data[1] * 2000.0 / LSM6DSOX_FSR;
-                Gy = data[2] * 2000.0 / LSM6DSOX_FSR;
-                Gz = data[3] * 2000.0 / LSM6DSOX_FSR;
-                Ax = data[4] * 4.0 / LSM6DSOX_FSR;
-                Ay = data[5] * 4.0 / LSM6DSOX_FSR;
-                Az = data[6] * 4.0 / LSM6DSOX_FSR;
+                Gx = data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS;
+                Gy = data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS;
+                Gz = data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS;
+                Ax = data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS;
+                Ay = data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS;
+                Az = data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS;
             } else {
                 temp = NAN;
                 Gx = NAN;
@@ -259,12 +242,5 @@ static void imuTaskFunc(void *) {
 
             printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, temp, Ax, Ay, Az, Gx, Gy, Gz);
         }
-    }
-}
-
-static void printTaskFunc(void *) {
-    while(true) {
-        printf("INT1 State: %u\n", gpio_get(INT1));
-        vTaskDelay(50);
     }
 }
