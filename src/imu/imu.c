@@ -115,8 +115,11 @@ void imuSetup () {
 
     printf("Creating Task...\n");
     imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(stackBuffer)/sizeof(StackType_t), NULL, 20, stackBuffer, &taskBuffer);
-    // res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
-    // printf("i2c_dma_init:\t%s\n", errorToString(res));
+
+
+    printf("Initializing I2C DMA driver...\n");
+    res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
+    printf("i2c_dma_init:\t%s\n", errorToString(res));
 }
 
 
@@ -209,7 +212,7 @@ static void imuTaskFunc (void *) {
             int16_t data[7];
             float temp, Gx, Gy, Gz, Ax, Ay, Az;
 
-            if (readRegistersSDK(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
+            if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
                 Gx = data[1] * 2000.0 / LSM6DSOX_FSR;
                 Gy = data[2] * 2000.0 / LSM6DSOX_FSR;
