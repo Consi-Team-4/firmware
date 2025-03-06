@@ -20,7 +20,7 @@
 
 
 // Got pins from arduino nano rp2040 connect schematic
-#define INT1 24
+#define INT1 26
 #define I2C_SDA 12
 #define I2C_SCL 13
 // i2c0 is the i2c connected to pins 12 and 13
@@ -30,11 +30,12 @@ static i2c_dma_t *i2c_dma;
 
 static StaticTask_t taskBuffer;
 static StackType_t stackBuffer[1000];
+TaskHandle_t imuTask;
 
 
 // Can't pass 64bit data directly in task notification
 // Saving it here so the task can access it
-//static volatile uint64_t imuIrqMicros;
+static volatile uint64_t imuIrqMicros;
 
 
 
@@ -55,9 +56,8 @@ static void imuTaskFunc(void *);
 void imuSetup () {
     int res;
 
-    printf("Setting up IMU...\n");
+    printf("Setting up SDK I2C...\n");
 
-    // Absolutely no problem here
     i2c_init(I2C_INST, 400*1000);
     
     gpio_set_function(I2C_SDA, GPIO_FUNC_I2C);
@@ -65,82 +65,58 @@ void imuSetup () {
     gpio_pull_up(I2C_SDA);
     gpio_pull_up(I2C_SCL);
 
-    // So wtf
-
 
     uint8_t buf[1];
     res = readRegistersSDK(REG_WHO_AM_I, buf, 1);
-    printf("WHO_AM_I:\t%s\tRead:%X\tShould be:%X\n", errorToString(res), buf[0], WHO_AM_I_VAL); // Tried repeating multiple times, so it's not that the first operation works
-    // res = readRegistersSDK(REG_CTRL1_XL, buf, 1);
-    // printf("CTRL1_XL:\t%s\tRead:%X\tShould be:%X\n", errorToString(res), buf[0], 0x00); // This register also works fine as long as it's being read and not written to
+    printf("WHO_AM_I:\t%s\tRead:%X\tShould be:%X\n", errorToString(res), buf[0], WHO_AM_I_VAL); 
 
 
+
+    printf("Setting up IMU...\n");
 
     // Currently running at 12.5Hz so I can make sure the code is working correctly first
-    
-    // Copying setup from arduino library with exception of 833Hz instead of 104Hz
+    // Copying setup from arduino library with exception of 12.5Hz instead of 104Hz
+
     // Accelerometer: 12.5 Hz, +-4g, LPF2 filter
-    
-    res = writeRegisterSDK(REG_CTRL1_XL, 0x4A);//0b0001<<4 | 0b10<<2 | 0b1<<1);
+    res = writeRegisterSDK(REG_CTRL1_XL, 0b0001<<4 | 0b10<<2 | 0b1<<1);
     printf("CTRL1_XL:\t%s\n", errorToString(res));
     // Gyroscope: 12.5 Hz, +-2000 dps, not +-125dps
-    res = writeRegisterSDK(REG_CTRL2_G,  0x4C);//0b0001<<4 | 0b11<<2 | 0b0<<1);
+    res = writeRegisterSDK(REG_CTRL2_G,  0b0001<<4 | 0b11<<2 | 0b0<<1);
     printf("CTRL2_G:\t%s\n", errorToString(res));
     // Gyroscope: high performance mode, high pass disabled, 16MHz hp cuttof (irrelevant), OIS enable through SPI2, bypass accelerometer user offset, disable OIS (irrelevant)
     res = writeRegisterSDK(REG_CTRL7_G, 0x00);
     printf("CTRL7_G:\t%s\n", errorToString(res));
     // Accelerometer: bandwidth ODR/4, disable highpass reference mode?, enable fast settling mode, use low pass filter, old full scale mode, low pass to 6d functions
-    res = writeRegisterSDK(REG_CTRL8_XL, 0x09);//0b000<<5 | 0b0<<4 | 0b1<<3 | 0b0<<2 | 0b0<<1 | 0b1);
+    res = writeRegisterSDK(REG_CTRL8_XL,0b000<<5 | 0b0<<4 | 0b1<<3 | 0b0<<2 | 0b0<<1 | 0b1);
     printf("CTRL8_XL:\t%s\n", errorToString(res));
 
-    // Setting up interrupt pin
     // Interrupt on accelerometer or gyroscope data ready
     res = writeRegisterSDK(REG_INT1_CTRL, 0x03);
     printf("INT1_CTRL:\t%s\n", errorToString(res));
 
-    printf("Set up IMU!\n");
-
-    printf("Reading values to test...\n");
-    
-
-    int16_t data[7];
-    float temp, Gx, Gy, Gz, Ax, Ay, Az;
-
-    if (readRegistersSDK(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
-        temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
-        Gx = data[1] * 2000.0 / LSM6DSOX_FSR;
-        Gy = data[2] * 2000.0 / LSM6DSOX_FSR;
-        Gz = data[3] * 2000.0 / LSM6DSOX_FSR;
-        Ax = data[4] * 4.0 / LSM6DSOX_FSR;
-        Ay = data[5] * 4.0 / LSM6DSOX_FSR;
-        Az = data[6] * 4.0 / LSM6DSOX_FSR;
-    } else {
-        temp = NAN;
-        Gx = NAN;
-        Gy = NAN;
-        Gz = NAN;
-        Ax = NAN;
-        Ay = NAN;
-        Az = NAN;
-    }
-
-    printf("% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, Ax, Ay, Az, Gx, Gy, Gz);
-    
 
 
-    printf("Creating Task and setting up interrupt...\n");
-    res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
-    printf("i2c_dma_init:\t%s\n", errorToString(res));
+    printf("Setting up pico interrupt...\n");
 
+    // Initialize GPIO pin
+    gpio_init(INT1);
+    gpio_set_dir(INT1, GPIO_IN);
+    gpio_pull_up(INT1);
 
-    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(stackBuffer)/sizeof(StackType_t), NULL, 20, stackBuffer, &taskBuffer);
-
-
-    // Configure pin, add interrupt
+    // Hook up the IRQ
     irq_add_shared_handler(IO_IRQ_BANK0, imuDataReadyIrqCallback, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
-    gpio_set_dir(INT1, 0); // Set pin as input
-    gpio_set_irq_enabled(INT1, GPIO_IRQ_EDGE_RISE, true); // Enable interrupt on INT1 rising edge
-    printf("Created task and set up interrupt!\n");
+
+    // Make the pin trigger the IRQ
+    gpio_set_irq_enabled(INT1, GPIO_IRQ_EDGE_RISE, true);
+
+    // Enable IRQ
+    irq_set_enabled(IO_IRQ_BANK0, true);
+
+
+    printf("Creating Task...\n");
+    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(stackBuffer)/sizeof(StackType_t), NULL, 20, stackBuffer, &taskBuffer);
+    // res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
+    // printf("i2c_dma_init:\t%s\n", errorToString(res));
 }
 
 
@@ -205,6 +181,7 @@ static void imuDataReadyIrqCallback(void) {
     if (gpio_get_irq_event_mask(INT1) & GPIO_IRQ_EDGE_RISE) { // Trigger on INT1 rising edge
         gpio_acknowledge_irq(INT1, GPIO_IRQ_EDGE_RISE); // Acknowledge the request since we're responding to it
 
+
         // Get time as soon as data is ready
         imuIrqMicros = to_us_since_boot(get_absolute_time());
         
@@ -222,7 +199,7 @@ static void imuDataReadyIrqCallback(void) {
 static void imuTaskFunc (void *) {
     // Wait for notification from ISR
     while (true) {
-        if (ulTaskNotifyTake(true, 50)) {
+        if (ulTaskNotifyTake(true, 500)) {
             printf("Yep\n");
             // For now, just printing values
             // Reading temperature too for the hell of it
@@ -232,7 +209,7 @@ static void imuTaskFunc (void *) {
             int16_t data[7];
             float temp, Gx, Gy, Gz, Ax, Ay, Az;
 
-            if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
+            if (readRegistersSDK(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
                 Gx = data[1] * 2000.0 / LSM6DSOX_FSR;
                 Gy = data[2] * 2000.0 / LSM6DSOX_FSR;
@@ -250,7 +227,7 @@ static void imuTaskFunc (void *) {
                 Az = NAN;
             }
 
-            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, Ax, Ay, Az, Gx, Gy, Gz);
+            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuIrqMicros, temp, Ax, Ay, Az, Gx, Gy, Gz);
         } else {
             printf("Nope\n");
         }
