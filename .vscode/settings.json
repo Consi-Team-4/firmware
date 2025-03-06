@@ -50,6 +50,8 @@
         "utility": "cpp",
         "stdlib.h": "c",
         "error.h": "c",
-        "debug.h": "c"
+        "debug.h": "c",
+        "compare": "c",
+        "cstdint": "c"
     }
 }
