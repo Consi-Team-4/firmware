@@ -229,6 +229,7 @@ static void imuTaskFunc(void *) {
             // Reading temperature too for the hell of it
 
             uint64_t tmpMicros = imuIrqMicros; // Save the current time in case it gets overwritten
+            uint64_t prevMicros = imuData.micros;
 
             int16_t data[7];
             float temp;
@@ -243,6 +244,7 @@ static void imuTaskFunc(void *) {
                 imuData.Ax = data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS;
                 imuData.Ay = data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS;
                 imuData.Az = data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS;
+                imuData.ThetaZ += imuData.Gz * (imuData.micros - prevMicros) / 1000000;
                 xSemaphoreGive(imuDataMutex);
             } else {
                 temp = NAN;
@@ -254,11 +256,11 @@ static void imuTaskFunc(void *) {
                 imuData.Ax = NAN;
                 imuData.Ay = NAN;
                 imuData.Az = NAN;
+                imuData.ThetaZ = 0;
                 xSemaphoreGive(imuDataMutex);
             }
 
-            // Don't need mutex to access because it's only ever written to in this task.
-            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\t%7.2fdeg\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz, imuData.ThetaZ);
         }
     }
 }

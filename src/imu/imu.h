@@ -12,6 +12,7 @@ typedef struct imuData_s {
     float Gx;
     float Gy;
     float Gz;
+    float ThetaZ;
 } imuData_t;
 
 void imuSetup();

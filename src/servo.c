@@ -36,7 +36,7 @@ void servoSetup() {
     pwm_set_enabled(slice_num, true); // Start the pwm!
 
 
-    servoTask = xTaskCreateStatic(servoTaskFunc, "servoTask", sizeof(servoStackBuffer)/sizeof(StackType_t), NULL, 4, servoStackBuffer, &servoTaskBuffer);
+    servoTask = xTaskCreateStatic(servoTaskFunc, "servoTask", sizeof(servoStackBuffer)/sizeof(StackType_t), NULL, 3, servoStackBuffer, &servoTaskBuffer);
 }
 
 void servoTaskFunc(void *) {
@@ -46,7 +46,7 @@ void servoTaskFunc(void *) {
         imuData_t imuData;
         imuGetData(&imuData);
 
-        pwm_set_gpio_level(SERVO_PIN, (int)(1500 + 1000*(imuData.Gz/200.0)));
+        pwm_set_gpio_level(SERVO_PIN, (int)(1500 + 1000*(imuData.ThetaZ/135.0)));
         vTaskDelay(4);
     }
 }
