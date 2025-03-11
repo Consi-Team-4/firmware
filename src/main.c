@@ -1,16 +1,28 @@
 #include "FreeRTOS.h"
+#include "timers.h"
 #include "task.h"
 #include <stdio.h>
 #include "pico/stdlib.h"
-#include "imu.h"
+#include "imu/imu.h"
 #include "servo.h"
 
+#include "encoder/simple_encoder_substep.h"
+#include "simple_encoder_substep.pio.h" // Created by assembling the .pio file. Happens during the make process
 
-// The i2c_dma_* functions block the calling task, but allow other tasks to continue running.
-// Eg. while waiting on the i2c transfer from the IMU, we can also communicate with the lidar or do calculations
 
-// Also, keep in mind that we have 2 cores. So something can be running simultaniously with an ISR.
-// Pretty sure that as long as we do all of our setup code on one core, we'll be fine.
+
+
+static substep_state_t state;
+const PIO pio = pio0;
+const uint sm = 0;
+const uint ENCODER_PIN = 28; // Pin A2
+
+void printEncoderSpeed(TimerHandle_t xTimer) {
+    substep_update(&state);
+    // print out the result
+    printf("pos: %-10d  speed: %-10d  raw_steps: %-10d\n", state.position, state.speed/256, state.raw_step);
+}
+
 
 
 int main()
@@ -26,8 +38,20 @@ int main()
     }
     printf("Start ==========================================================================\n");
 
-    imuSetup();
-    servoSetup();
+    //imuSetup();
+    //servoSetup();
+
+    // Set up encoder
+
+
+    pio_add_program(pio, &simple_encoder_substep_program); // defined in simple_encoder_substep.pio.h
+    substep_init_state(pio, sm, ENCODER_PIN, &state); // Pin A2
+    state.idle_stop_samples = 10;
+    
+
+    static StaticTimer_t timerBuffer;
+    TimerHandle_t encoderTimer = xTimerCreateStatic("encoderRead", 10, pdTRUE, NULL, printEncoderSpeed, &timerBuffer);
+    xTimerStart(encoderTimer, portMAX_DELAY);
 
     vTaskStartScheduler();
 }
