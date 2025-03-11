@@ -1,19 +1,28 @@
 add_executable(${ProjectName}
-    main.c
-    freeRTOSHelpers.c
-    debug.c
+    encoder/simple_encoder_substep.c
     imu/imu.c
+    debug.c
+    freeRTOSHelpers.c
+    main.c
     servo.c
 )
 
+pico_generate_pio_header(${ProjectName}
+    ${CMAKE_CURRENT_LIST_DIR}/encoder/simple_encoder_substep.pio
+)
+
+
 target_include_directories(${ProjectName} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/encoder
     ${CMAKE_CURRENT_LIST_DIR}/imu
+    ${CMAKE_CURRENT_LIST_DIR}/lidar
 )
 
 target_link_libraries(${ProjectName} 
     pico_stdlib 
-    hardware_pwm # Not sure why this one needs to be specified separately
+    hardware_pwm
+    hardware_pio
     FreeRTOS-Kernel-Heap4
     i2c_dma
     )
