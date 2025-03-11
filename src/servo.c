@@ -10,7 +10,6 @@
 
 
 
-#define BUTTON_PIN 26
 #define SERVO_PIN 27
 
 
@@ -21,11 +20,6 @@ TaskHandle_t servoTask;
 void servoTaskFunc(void *);
 
 void servoSetup() {
-    gpio_init(BUTTON_PIN);
-    gpio_set_dir(BUTTON_PIN, GPIO_IN);
-    gpio_pull_up(BUTTON_PIN);
-
-
     gpio_set_function(SERVO_PIN, GPIO_FUNC_PWM);
     const uint slice_num = pwm_gpio_to_slice_num(SERVO_PIN);
     pwm_set_clkdiv(slice_num, 125.0); // Set clock to 1MHz
