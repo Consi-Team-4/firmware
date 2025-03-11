@@ -20,11 +20,12 @@ target_include_directories(${ProjectName} PRIVATE
 )
 
 target_link_libraries(${ProjectName} 
-    pico_stdlib 
+    pico_stdlib
     hardware_pwm
     hardware_pio
     FreeRTOS-Kernel-Heap4
     i2c_dma
+    ekf_engl
     )
 
 # Enable Stdio over usb
