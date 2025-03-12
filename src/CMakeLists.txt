@@ -1,6 +1,7 @@
 add_executable(${ProjectName}
     encoder/simple_encoder_substep.c
     imu/imu.c
+    lidar/lidar.c
     debug.c
     freeRTOSHelpers.c
     main.c
@@ -23,6 +24,9 @@ target_link_libraries(${ProjectName}
     pico_stdlib
     hardware_pwm
     hardware_pio
+    hardware_dma
+    hardware_i2c
+    hardware_uart
     FreeRTOS-Kernel-Heap4
     i2c_dma
     ekf_engl

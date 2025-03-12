@@ -3,8 +3,10 @@
 #include "task.h"
 #include <stdio.h>
 #include "pico/stdlib.h"
+
 #include "imu/imu.h"
 #include "servo.h"
+#include "lidar.h"
 
 #include "encoder/simple_encoder_substep.h"
 #include "simple_encoder_substep.pio.h" // Created by assembling the .pio file. Happens during the make process
@@ -41,17 +43,18 @@ int main()
     //imuSetup();
     //servoSetup();
 
-    // Set up encoder
 
+    lidarSetup();
 
-    pio_add_program(pio, &simple_encoder_substep_program); // defined in simple_encoder_substep.pio.h
-    substep_init_state(pio, sm, ENCODER_PIN, &state); // Pin A2
-    state.idle_stop_samples = 10;
+    // // Set up encoder
+    // pio_add_program(pio, &simple_encoder_substep_program); // defined in simple_encoder_substep.pio.h
+    // substep_init_state(pio, sm, ENCODER_PIN, &state); // Pin A2
+    // state.idle_stop_samples = 10;
     
 
-    static StaticTimer_t timerBuffer;
-    TimerHandle_t encoderTimer = xTimerCreateStatic("encoderRead", 10, pdTRUE, NULL, printEncoderSpeed, &timerBuffer);
-    xTimerStart(encoderTimer, portMAX_DELAY);
+    // static StaticTimer_t timerBuffer;
+    // TimerHandle_t encoderTimer = xTimerCreateStatic("encoderRead", 10, pdTRUE, NULL, printEncoderSpeed, &timerBuffer);
+    // xTimerStart(encoderTimer, portMAX_DELAY);
 
     vTaskStartScheduler();
 }

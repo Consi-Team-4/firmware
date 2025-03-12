@@ -57,6 +57,8 @@
         "gpio.h": "c",
         "servo.h": "c",
         "string.h": "c",
-        "divider.h": "c"
+        "divider.h": "c",
+        "lidar.h": "c",
+        "uart.h": "c"
     }
 }
