@@ -59,6 +59,7 @@
         "string.h": "c",
         "divider.h": "c",
         "lidar.h": "c",
-        "uart.h": "c"
+        "uart.h": "c",
+        "simple_encoder_substep.h": "c"
     }
 }

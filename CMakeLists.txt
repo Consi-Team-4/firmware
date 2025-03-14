@@ -38,4 +38,4 @@ add_subdirectory(src)
 # if you have anything in "lib" folder then uncomment below - remember to add a CMakeLists.txt
 # file to the "lib" directory
 add_subdirectory(lib/pico-i2c-dma/src)
-add_subdirectory(lib/ekf_engl)
+add_subdirectory(lib/ukf_engl)

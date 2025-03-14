@@ -6,6 +6,7 @@
                 "${workspaceFolder}/lib/FreeRTOS-Kernel/portable/ThirdParty/GCC/RP2040/**",
                 "${workspaceFolder}/lib/FreeRTOS-Kernel/include/**",
                 "${workspaceFolder}/lib/pico-i2c-dma/src/include/**",
+                "${workspaceFolder}/lib/ukf_engl/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/common/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/rp2_common/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/rp2040/**",
