@@ -5,6 +5,7 @@ add_executable(${ProjectName}
     freeRTOSHelpers.c
     main.c
     servo.c
+    esc_pid.c
 )
 
 pico_generate_pio_header(${ProjectName}
