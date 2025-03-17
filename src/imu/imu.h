@@ -6,16 +6,19 @@
 
 typedef struct imuData_s {
     uint64_t micros;
-    float Ax;
-    float Ay;
-    float Az;
+    // Gyros are rad/s (keeping everything in radians so trig functions are convenient)
     float Gx;
     float Gy;
     float Gz;
-    float ThetaZ;
+    // Accelerations are m/s^2
+    float Ax;
+    float Ay;
+    float Az;
 } imuData_t;
 
 void imuSetup();
+
+// Only call from within a task
 void imuGetData(imuData_t *buf);
 
 #endif

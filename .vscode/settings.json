@@ -60,6 +60,8 @@
         "divider.h": "c",
         "lidar.h": "c",
         "uart.h": "c",
-        "simple_encoder_substep.h": "c"
+        "simple_encoder_substep.h": "c",
+        "numbers": "cpp",
+        "math.h": "c"
     }
 }

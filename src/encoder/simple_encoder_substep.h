@@ -2,7 +2,9 @@
 #define SIMPLE_ENCODER_SUBSTEP_H
 
 #include "hardware/pio.h"
+#include "simple_encoder_substep.pio.h"
 
+// pointer to PIO program is &simple_encoder_substep_program
 
 typedef struct substep_state_t {
     // configuration data:

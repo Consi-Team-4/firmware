@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include "pico/stdlib.h"
 
+#include "constants.h"
 #include "LSM6DSOXdefines.h"
 #include "debug.h"
 
@@ -238,13 +239,12 @@ static void imuTaskFunc(void *) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
                 xSemaphoreTake(imuDataMutex, portMAX_DELAY);
                 imuData.micros = tmpMicros;
-                imuData.Gx = data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS;
-                imuData.Gy = data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS;
-                imuData.Gz = data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                imuData.Ax = data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS;
-                imuData.Ay = data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS;
-                imuData.Az = data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS;
-                imuData.ThetaZ += imuData.Gz * (imuData.micros - prevMicros) / 1000000;
+                imuData.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
+                imuData.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
+                imuData.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
+                imuData.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR - AXOFFS;
+                imuData.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR - AYOFFS;
+                imuData.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR - AZOFFS;
                 xSemaphoreGive(imuDataMutex);
             } else {
                 temp = NAN;
@@ -256,11 +256,12 @@ static void imuTaskFunc(void *) {
                 imuData.Ax = NAN;
                 imuData.Ay = NAN;
                 imuData.Az = NAN;
-                imuData.ThetaZ = 0;
                 xSemaphoreGive(imuDataMutex);
             }
 
-            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\t%7.2fdeg\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz, imuData.ThetaZ);
+            // Notify Kalman task that data is ready
+
+            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
         }
     }
 }

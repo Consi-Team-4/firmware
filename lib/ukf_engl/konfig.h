@@ -14,15 +14,13 @@
 
 
 /* State Space dimension */
-#define SS_X_LEN    (2)
-#define SS_Z_LEN    (1)
-#define SS_U_LEN    (1)
-// #define SS_DT_MILIS (10)                            /* 10 ms */
-// #define SS_DT       float_prec(SS_DT_MILIS/1000.)   /* Sampling time */
+#define SS_X_LEN    (5)
+#define SS_Z_LEN    (7)
+#define SS_U_LEN    (6)
 
 
 /* Change this size based on the biggest matrix you will use */
-#define MATRIX_MAXIMUM_SIZE     (5)
+#define MATRIX_MAXIMUM_SIZE     (7)
 
 /* Define this to enable matrix bound checking */
 #define MATRIX_USE_BOUNDS_CHECKING

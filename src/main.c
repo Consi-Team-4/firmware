@@ -28,7 +28,7 @@ void printEncoderSpeed(TimerHandle_t xTimer) {
 
 
 int main()
-{    
+{
     stdio_init_all();
 
     // Wait a few seconds before doing anything so that the serial monitor has time to load.

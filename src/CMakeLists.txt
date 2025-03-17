@@ -1,9 +1,11 @@
 add_executable(${ProjectName}
+    encoder/encoder.c
     encoder/simple_encoder_substep.c
     imu/imu.c
     lidar/lidar.c
     debug.c
     freeRTOSHelpers.c
+    kalman.cpp
     main.c
     servo.c
 )
