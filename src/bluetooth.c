@@ -12,23 +12,16 @@
 #define BAUD_RATE 9600    // Default HC-05 baud rate
 
 // Bluetooth tasks
-static void uart0_to_uart1_task(void *pvParameters) {
+static void task(void *pvParameters) {
     while (1) {
-        if (uart_is_readable(uart0)) {
-            char ch = uart_getc(uart0);
-            uart_putc_raw(UART_ID_1, ch);
+        int retval = stdio_getchar_timeout_us(0);
+        if (retval != PICO_ERROR_TIMEOUT) {
+            uart_putc_raw(UART_ID_1, (uint8_t)retval);
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
-    }
-}
-
-static void uart1_to_uart0_task(void *pvParameters) {
-    while (1) {
         if (uart_is_readable(UART_ID_1)) {
             char ch = uart_getc(UART_ID_1);
-            uart_putc_raw(uart0, ch);
+            stdio_putchar_raw(ch);
         }
-        vTaskDelay(pdMS_TO_TICKS(5));
     }
 }
 
@@ -45,6 +38,5 @@ void bluetoothSetup(void) {
     printf("HC-05 Bluetooth module initialized\n");
     
     // Create tasks for Bluetooth communication
-    xTaskCreate(uart0_to_uart1_task, "USB to HC05", 256, NULL, 1, NULL);
-    xTaskCreate(uart1_to_uart0_task, "HC05 to USB", 256, NULL, 1, NULL);
+    xTaskCreate(task, "USB to HC05", 1000, NULL, 1, NULL);
 }

@@ -18,9 +18,6 @@ int main()
     }
     printf("Start ==========================================================================\n");
     
-    // Initialize all subsystems
-    imuSetup();
-    servoSetup();
     bluetoothSetup();
     
     // Start the scheduler
