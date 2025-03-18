@@ -7,8 +7,8 @@
 
 // UART Configuration for DSD TECH HC-05
 #define UART_ID_1 uart1   // HC-05 connection
-#define UART1_TX_PIN 8    // Connect to HC-05 RXD
-#define UART1_RX_PIN 9    // Connect to HC-05 TXD
+#define UART1_TX_PIN 20    // D8 Connect to HC-05 RXD
+#define UART1_RX_PIN 21    // D9 Connect to HC-05 TXD
 #define BAUD_RATE 9600    // Default HC-05 baud rate
 
 // Bluetooth tasks

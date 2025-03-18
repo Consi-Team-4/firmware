@@ -1,6 +1,7 @@
 add_executable(${ProjectName}
     encoder/simple_encoder_substep.c
     imu/imu.c
+    bluetooth.c
     debug.c
     freeRTOSHelpers.c
     main.c
