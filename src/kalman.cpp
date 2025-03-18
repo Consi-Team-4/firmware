@@ -1,21 +1,24 @@
-// Functions available in the c code
-extern "C" {
-    #include "kalman.h"
-}
-
 // Based off lib/ukf_engl/ukf_engl.ino
 
 #include "konfig.h"
 #include "matrix.h"
 #include "ukf.h"
 
+extern "C" {
+    #include "kalman.h"
 
-#include "FreeRTOS.h"
-#include "task.h"
+    #include "FreeRTOS.h"
+    #include "task.h"
+    #include "semphr.h"
 
-#include "constants.h"
-#include "imu.h"
-#include "encoder.h"
+    #include <stdio.h>
+
+    #include "constants.h"
+    #include "imu.h"
+    #include "encoder.h"
+}
+
+
 
 /*
 Typically, the IMU is used as U in the predict step and the angular velocity/linear acceleration is excluded from the state vector X.
@@ -66,105 +69,172 @@ Y vector:
 */
 
 
-// Not included in state, but want to keep track anyways
+// Initial state covariance
+#define SB  (0.5*(M_PI / 180.0 * 20)) // 20 degrees ~= 2 sigma (95% confidence) for roll
+#define SG  (0.5*(M_PI / 180.0 * 10)) // 10 degrees ~= 2 sigma (95% confidence) for pitch
+static const float_prec PINIT_data[SS_X_LEN*SS_X_LEN] = {
+    0,  0,  0,  0,  0,      0,      // Define z=0
+    0,  0,  0,  0,  0,      0,      // Know vz=0 (Car is still)
+    0,  0,  0,  0,  0,      0,      // Define x=0
+    0,  0,  0,  0,  0,      0,      // Know vx=0 (Car is still)
+    0,  0,  0,  0,  SB*SB,  0,      // beta within ~20degrees 95% of the time
+    0,  0,  0,  0,  0,      SG*SG,  // ga
+};
+#undef SB
+#undef SG
+static Matrix PINIT(SS_X_LEN, SS_X_LEN, PINIT_data);
+
+// Process noise covariance (includes IMU)
+#define Favg 833.0
+#define SL  (0.001/Favg) // 1mm drift/s
+#define SV  (0.001/Favg) // 1mm/s drift/s
+#define SA  ((M_PI / 180.0 * 0.01)/Favg) // 0.01 degree drift/s
+static const float_prec Rv_data[SS_X_LEN*SS_X_LEN] = { 
+    SL*SL,  0,      0,      0,      0,      0,
+    0,      SV*SV,  0,      0,      0,      0,
+    0,      0,      SL*SL,  0,      0,      0,
+    0,      0,      0,      SV*SV,  0,      0,
+    0,      0,      0,      0,      SA*SA,  0, 
+    0,      0,      0,      0,      0,      SA*SA,
+};
+#undef Favg
+#undef SL
+#undef SV
+#undef SA
+static Matrix Rv(SS_X_LEN, SS_X_LEN, Rv_data);
+
+// Measurement noise covariance
+#define SA  (0.5*(0.010)) // 10mm/s^2 ~= 2 sigma (95% confidence) for accelerometer
+#define SP  (0.5*(0.5)) // 0.5m ~= 2 sigma (95% confidence) for encoder position
+#define SV  (1*(0.001)) // 1mm/s ~= 2 sigma (95% confidence) for encoder speed
+#define Z   1 // Made up value to stop Z from wandering off
+#define VZ  1 // Made up value to stop VZ from wandering off
+static const float_prec Rn_data[SS_Z_LEN*SS_Z_LEN] = {
+    SA*SA,  0,      0,      0,      0,      0,      0,
+    0,      SA*SA,  0,      0,      0,      0,      0,
+    0,      0,      SA*SA,  0,      0,      0,      0,
+    0,      0,      0,      SP*SP,  0,      0,      0,
+    0,      0,      0,      0,      SV*SV,  0,      0,
+    0,      0,      0,      0,      0,      Z,      0,
+    0,      0,      0,      0,      0,      0,      VZ,
+};
+#undef SA
+#undef SP
+#undef SV
+#undef Z
+#undef VZ
+static Matrix Rn(SS_Z_LEN, SS_Z_LEN, Rn_data);
+
+// Filter
+static bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U);
+static bool Main_bUpdateNonlinearY(Matrix& Y, const Matrix& X, const Matrix& U);
+static UKF ukf(Matrix(SS_X_LEN, 1), PINIT, Rv, Rn, Main_bUpdateNonlinearX, Main_bUpdateNonlinearY);
+
+
+// Not included in state, but want to track anyway
 static float_prec vbeta, vgamma;
+
+// Cached state for returning to other threads
+static kalmanState_t cachedState;
+static StaticSemaphore_t cacheMutexBuffer;
+static SemaphoreHandle_t cacheMutex;
+
+
+// Keep track of time between kalman filter steps
 static uint64_t prevMicros;
 static float_prec dt;
 
+// FreeRTOS task
+static StaticTask_t kalmanTaskBuffer;
+static StackType_t kalmanStackBuffer[2000];
+static TaskHandle_t kalmanTask;
 
 
 
-/* UKF initialization constant -------------------------------------------------------------------------------------- */
-#define P_INIT      (10.)
-#define Rv_INIT     (1e-6)
-#define Rn_INIT     (0.0015)
-/* P(k=0) variable -------------------------------------------------------------------------------------------------- */
-float_prec UKF_PINIT_data[SS_X_LEN*SS_X_LEN] = {P_INIT, 0,
-                                                0,      P_INIT};
-Matrix UKF_PINIT(SS_X_LEN, SS_X_LEN, UKF_PINIT_data);
-/* Rv constant ------------------------------------------------------------------------------------------------------ */
-float_prec UKF_RVINIT_data[SS_X_LEN*SS_X_LEN] = {Rv_INIT, 0,
-                                                 0,      Rv_INIT};
-Matrix UKF_RvINIT(SS_X_LEN, SS_X_LEN, UKF_RVINIT_data);
-/* Rn constant ------------------------------------------------------------------------------------------------------ */
-float_prec UKF_RNINIT_data[SS_Z_LEN*SS_Z_LEN] = {Rn_INIT};
-Matrix UKF_RnINIT(SS_Z_LEN, SS_Z_LEN, UKF_RNINIT_data);
-/* Nonlinear & linearization function ------------------------------------------------------------------------------- */
-bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U);
-bool Main_bUpdateNonlinearY(Matrix& Y, const Matrix& X, const Matrix& U);
-/* UKF variables ---------------------------------------------------------------------------------------------------- */
-Matrix X(SS_X_LEN, 1);
-Matrix Y(SS_Z_LEN, 1);
-Matrix U(SS_U_LEN, 1);
-/* UKF system declaration ------------------------------------------------------------------------------------------- */
-UKF UKF_IMU(X, UKF_PINIT, UKF_RvINIT, UKF_RnINIT, Main_bUpdateNonlinearX, Main_bUpdateNonlinearY);
+static void kalmanTaskFunc(void *);
 
-
-
-/* ========================================= Auxiliary variables/function declaration ========================================= */
-elapsedMillis timerLed, timerUKF;
-uint64_t u64compuTime;
-char bufferTxSer[100];
-
-
-
-void setup() {
-    /* serial to display data */
-    Serial.begin(115200);
-    while(!Serial) {}
-    
-    X.vSetToZero();
-    UKF_IMU.vReset(X, UKF_PINIT, UKF_RvINIT, UKF_RnINIT);
+TaskHandle_t kalmanSetup() {
+    cacheMutex = xSemaphoreCreateMutexStatic(&cacheMutexBuffer);
+    // Lower priority (2) for kalman math
+    kalmanTask = xTaskCreateStatic(kalmanTaskFunc, "kalmanTask", sizeof(kalmanStackBuffer)/sizeof(StackType_t), NULL, 2, kalmanStackBuffer, &kalmanTaskBuffer);
+    return kalmanTask;
 }
 
+void kalmanGetState(kalmanState_t *buf) {
+    xSemaphoreTake(cacheMutex, portMAX_DELAY);
+    *buf = cachedState;
+    xSemaphoreGive(cacheMutex);
+}
 
-void kalmanTaskFunc(void *) {
-    // Wait for notification from ISR
+static void kalmanTaskFunc(void *) {
+    // Wait for notification from IMU code
     while (true) {
         if (ulTaskNotifyTake(true, portMAX_DELAY)) {
-            // Update sensors
-
+            // Get data
             imuData_t imuData;
             imuGetData(&imuData);
 
+            if (isnan(imuData.Gx) || isnan(imuData.Gy) || isnan(imuData.Gz) || isnan(imuData.Ax) || isnan(imuData.Ay) || isnan(imuData.Az)) {
+                printf("IMU Nan!\n");
+                continue;
+            }
+
             float position, speed;
             encoderRead(&position, &speed);
-
 
             // Update dt (used in predict step)
             // Should be relatively constant since triggered by IMU interrupt, but good to check
             dt = 0.000001 * (imuData.micros - prevMicros);
             prevMicros = imuData.micros;
+            
+            const float_prec Y_data[SS_Z_LEN] = {
+                imuData.Ax,
+                imuData.Ay,
+                imuData.Az,
+                position,
+                speed,
+                0,
+                0,
+            };
+            Matrix Y(SS_Z_LEN, 1, Y_data);
 
-            Y[0][0] = imuData.Ax;
-            Y[1][0] = imuData.Ay;
-            Y[2][0] = imuData.Az;
-            Y[3][0] = position;
-            Y[4][0] = speed;
-            Y[5][0] = 0;
-            Y[6][0] = 0;
+            const float_prec U_data[SS_U_LEN] = {
+                imuData.Gx,
+                imuData.Gy,
+                imuData.Gz,
+                imuData.Ax,
+                imuData.Ay,
+                imuData.Az,
+            };
+            Matrix U(SS_U_LEN, 1, U_data);
 
-
-            U[0][0] = imuData.Gx;
-            U[1][0] = imuData.Gy;
-            U[2][0] = imuData.Gz;
-            U[3][0] = imuData.Ax;
-            U[4][0] = imuData.Ay;
-            U[5][0] = imuData.Az;
-
-
-            /* ============================= Update the Kalman Filter ============================== */
-            if (!UKF_IMU.bUpdate(Y, U)) {
+            // Update kalman filter
+            if (!ukf.bUpdate(Y, U)) {
                 // Use better reset for X?
-                X.vSetToZero();
-                UKF_IMU.vReset(X, UKF_PINIT, UKF_RvINIT, UKF_RnINIT);
+                printf("Kalman Error!\n");
+                ukf.vReset(Matrix(SS_X_LEN, 1), PINIT, Rv, Rn);
             }
+            
+
+            // Save results to cache
+            Matrix X = ukf.GetX();
+            xSemaphoreTake(cacheMutex, portMAX_DELAY);
+            cachedState.micros = prevMicros;
+            cachedState.z = X[0][0];
+            cachedState.vz = X[1][0];
+            cachedState.x = X[2][0];
+            cachedState.vx = X[3][0];
+            cachedState.beta = X[4][0];
+            cachedState.vbeta = vbeta;
+            cachedState.gamma = X[5][0];
+            cachedState.vgamma = vgamma;
+            xSemaphoreGive(cacheMutex);
         }
     }
 }
 
 
-bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U)
+static bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U)
 {
     const float_prec Gx = U[0][0];
     const float_prec Gy = U[1][0];
@@ -192,24 +262,25 @@ bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U)
     const float_prec sg = sin(gamma);
 
     float_prec Rotation_data[3*3] = {
-        (1*cg - 0*sb*sg),   (cg*0 + 1*sb*sg),   (-cb*sg)
-        (-cb*0),            (ca*cb),            (sb)
-        (1*sg + cg*0*sb),   (0*sg - 1*cg*sb),   (cb*cg)
+        (1*cg - 0*sb*sg),   (cg*0 + 1*sb*sg),   (-cb*sg),
+        (-cb*0),            (1*cb),            (sb),
+        (1*sg + cg*0*sb),   (0*sg - 1*cg*sb),   (cb*cg),
     };
     Matrix Rotation(3, 3, Rotation_data);
 
     float_prec IMU_data[3*2] = {
         Ax, Gx,
         Ay, Gy, 
-        Az, Gz
+        Az, Gz,
     };
     Matrix IMU(3, 2, IMU_data);
     
     Matrix U_Trans = Rotation * IMU;
     const float_prec az = U_Trans[2][0];
     const float_prec ax = U_Trans[0][0];
-    const float_prec vbeta = U_Trans[0][0];
-    const float_prec vgamma = cb*U_Trans[1][0] + sb*U_Trans[1][0];
+    // Save vbeta and vgamma to static variables to save for later
+    vbeta = U_Trans[0][0];
+    vgamma = cb*U_Trans[1][0] + sb*U_Trans[1][0];
     
     X_Next[0][0] = z + vz*dt + az*0.5*dt*dt;
     X_Next[1][0] = vz + az*dt;
@@ -218,9 +289,11 @@ bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix& U)
     
     X_Next[4][0] = beta + vbeta*dt;
     X_Next[5][0] = gamma + vgamma*dt;
+
+    return true; // succcess
 }
 
-bool Main_bUpdateNonlinearY(Matrix& Y, const Matrix& X, const Matrix& U)
+static bool Main_bUpdateNonlinearY(Matrix& Y, const Matrix& X, const Matrix& U)
 {
     // Not sure why U is here, and it also isn't used in the example, so ?
 
@@ -255,12 +328,14 @@ bool Main_bUpdateNonlinearY(Matrix& Y, const Matrix& X, const Matrix& U)
     
     Y[5][0] = z;
     Y[6][0] = vz;
+
+    return true; // succcess
 }
 
 
 
 
-
+// Used in assertions in matrix math
 void SPEW_THE_ERROR(char const * str)
 {
     #if (SYSTEM_IMPLEMENTATION == SYSTEM_IMPLEMENTATION_PC)
@@ -268,7 +343,7 @@ void SPEW_THE_ERROR(char const * str)
     #elif (SYSTEM_IMPLEMENTATION == SYSTEM_IMPLEMENTATION_EMBEDDED_ARDUINO)
         Serial.println(str);
     #else
-        /* Silent function */
+        printf("%s\n", str);
     #endif
     while(1);
 }

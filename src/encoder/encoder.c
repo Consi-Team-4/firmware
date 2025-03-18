@@ -3,6 +3,8 @@
 #include "FreeRTOS.h"
 #include "semphr.h"
 
+#include "pico/stdlib.h"
+
 #include "simple_encoder_substep.h"
 
 
@@ -43,11 +45,11 @@ void encoderRead(float *position, float *speed) {
         cachedPosition = METERS_PER_SUBSTEP * state.position;
         cachedSpeed = METERS_PER_SUBSTEP * 0.953674316406f * state.speed_2_20; // Magic number is seconds per 2^20 microseconds
 
-        position = cachedPosition;
-        speed = cachedSpeed;
+        *position = cachedPosition;
+        *speed = cachedSpeed;
     } else { // Use cached values
-        position = cachedPosition;
-        speed = cachedSpeed;
+        *position = cachedPosition;
+        *speed = cachedSpeed;
     }
     xSemaphoreGive(encoderMutex);
     // Check if we're trying to read again too soon. If so, use cached results

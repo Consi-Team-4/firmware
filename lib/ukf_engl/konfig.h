@@ -14,13 +14,13 @@
 
 
 /* State Space dimension */
-#define SS_X_LEN    (5)
+#define SS_X_LEN    (6)
 #define SS_Z_LEN    (7)
 #define SS_U_LEN    (6)
 
 
 /* Change this size based on the biggest matrix you will use */
-#define MATRIX_MAXIMUM_SIZE     (7)
+#define MATRIX_MAXIMUM_SIZE     (13)
 
 /* Define this to enable matrix bound checking */
 #define MATRIX_USE_BOUNDS_CHECKING

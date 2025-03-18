@@ -62,6 +62,8 @@
         "uart.h": "c",
         "simple_encoder_substep.h": "c",
         "numbers": "cpp",
-        "math.h": "c"
+        "math.h": "c",
+        "encoder.h": "c",
+        "irq.h": "c"
     }
 }

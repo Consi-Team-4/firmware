@@ -2,6 +2,8 @@
 #define IMU_H
 
 #include <stdint.h>
+#include "FreeRTOS.h"
+#include "task.h"
 
 
 typedef struct imuData_s {
@@ -16,7 +18,7 @@ typedef struct imuData_s {
     float Az;
 } imuData_t;
 
-void imuSetup();
+void imuSetup(TaskHandle_t taskToNotify);
 
 // Only call from within a task
 void imuGetData(imuData_t *buf);

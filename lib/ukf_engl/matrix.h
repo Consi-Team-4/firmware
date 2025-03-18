@@ -131,6 +131,7 @@
 #define MATRIX_H
 
 #include "konfig.h"
+#include <string.h>
 
 #if (SYSTEM_IMPLEMENTATION == SYSTEM_IMPLEMENTATION_PC)
     #include <iostream>

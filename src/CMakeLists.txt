@@ -31,7 +31,7 @@ target_link_libraries(${ProjectName}
     hardware_uart
     FreeRTOS-Kernel-Heap4
     i2c_dma
-    ekf_engl
+    ukf_engl
     )
 
 # Enable Stdio over usb

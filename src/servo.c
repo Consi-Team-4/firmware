@@ -40,7 +40,7 @@ void servoTaskFunc(void *) {
         imuData_t imuData;
         imuGetData(&imuData);
 
-        pwm_set_gpio_level(SERVO_PIN, (int)(1500 + 1000*(imuData.ThetaZ/135.0)));
-        vTaskDelay(4);
+        // pwm_set_gpio_level(SERVO_PIN, (int)(1500 + 1000*(imuData.ThetaZ/135.0)));
+        // vTaskDelay(4);
     }
 }

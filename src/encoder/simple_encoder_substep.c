@@ -12,10 +12,7 @@
 #include "pico/stdlib.h"
 
 #include "hardware/timer.h"
-#include "hardware/pwm.h"
 #include <pico/divider.h>
-
-#include "simple_encoder_substep.pio.h"
 
 //
 // ---- quadrature encoder interface with sub-step accuracy

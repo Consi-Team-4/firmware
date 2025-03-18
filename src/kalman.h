@@ -9,8 +9,20 @@
 
 // Returns the handle to the kalman filter task
 // This task can get notified by the IMU code whenever a new measurement is ready
-TaskHandle_t kalmanSetup();
+TaskHandle_t kalmanSetup(void);
 
+typedef struct kalmanState_s {
+    uint64_t micros;
+    float z;
+    float vz;
+    float x;
+    float vx;
+    float beta;
+    float vbeta;
+    float gamma;
+    float vgamma;
+} kalmanState_t;
 
+void kalmanGetState(kalmanState_t *buf);
 
 #endif

@@ -4,14 +4,13 @@
 #include "task.h"
 #include "semphr.h"
 
-#include "math.h"
+#include <math.h>
+#include <stdio.h>
 
+#include "pico/stdlib.h"
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "i2c_dma.h"
-
-#include <stdio.h>
-#include "pico/stdlib.h"
 
 #include "constants.h"
 #include "LSM6DSOXdefines.h"
@@ -51,6 +50,9 @@ static StaticSemaphore_t imuDataMutexBuffer;
 static SemaphoreHandle_t imuDataMutex;
 
 
+// Task to notify when IMU data is ready
+static TaskHandle_t imuTaskToNotify;
+
 
 // Forward declaring internal functions
 
@@ -66,8 +68,8 @@ static void imuTaskFunc(void *);
 
 
 
-void imuSetup() {
-    int res;
+void imuSetup(TaskHandle_t taskToNotify) {
+    imuTaskToNotify = taskToNotify;
 
     printf("Setting up SDK I2C...\n");
 
@@ -79,6 +81,9 @@ void imuSetup() {
     gpio_pull_up(I2C_SCL);
 
 
+    int res;
+
+
     uint8_t buf[1];
     res = readRegistersSDK(REG_WHO_AM_I, buf, 1);
     printf("WHO_AM_I:\t%s\tRead:%X\tShould be:%X\n", errorToString(res), buf[0], WHO_AM_I_VAL); 
@@ -88,7 +93,7 @@ void imuSetup() {
     printf("Setting up IMU...\n");
 
     // Copying setup from arduino library with exception of 833Hz instead of 104Hz
-
+    
     // Accelerometer: 833 Hz, +-4g, LPF2 filter
     res = writeRegisterSDK(REG_CTRL1_XL, 0b0111<<4 | 0b10<<2 | 0b1<<1);
     printf("CTRL1_XL:\t%s\n", errorToString(res));
@@ -259,9 +264,9 @@ static void imuTaskFunc(void *) {
                 xSemaphoreGive(imuDataMutex);
             }
 
-            // Notify Kalman task that data is ready
+            xTaskNotifyGive(imuTaskToNotify);
 
-            printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+            // printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
         }
     }
 }
