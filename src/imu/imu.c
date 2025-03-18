@@ -95,10 +95,10 @@ void imuSetup(TaskHandle_t taskToNotify) {
     // Copying setup from arduino library with exception of 833Hz instead of 104Hz
     
     // Accelerometer: 833 Hz, +-4g, LPF2 filter
-    res = writeRegisterSDK(REG_CTRL1_XL, 0b0111<<4 | 0b10<<2 | 0b1<<1);
+    res = writeRegisterSDK(REG_CTRL1_XL, 0b0110<<4 | 0b10<<2 | 0b1<<1);
     printf("CTRL1_XL:\t%s\n", errorToString(res));
     // Gyroscope: 833 Hz, +-2000 dps, not +-125dps
-    res = writeRegisterSDK(REG_CTRL2_G,  0b0111<<4 | 0b11<<2 | 0b0<<1);
+    res = writeRegisterSDK(REG_CTRL2_G,  0b0110<<4 | 0b11<<2 | 0b0<<1);
     printf("CTRL2_G:\t%s\n", errorToString(res));
     // Gyroscope: high performance mode, high pass disabled, 16MHz hp cuttof (irrelevant), OIS enable through SPI2, bypass accelerometer user offset, disable OIS (irrelevant)
     res = writeRegisterSDK(REG_CTRL7_G, 0x00);
@@ -222,51 +222,57 @@ static void imuDataReadyIrqCallback(void) {
 }
 
 static void imuTaskFunc(void *) {
-    
     { // Read once to get the party started
-    int16_t data[7];
-    readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data));
+        int16_t data[7];
+        readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data));
     }
 
-    // Wait for notification from ISR
     while (true) {
-        if (ulTaskNotifyTake(true, portMAX_DELAY)) {
-            // For now, just printing values
-            // Reading temperature too for the hell of it
+        
 
-            uint64_t tmpMicros = imuIrqMicros; // Save the current time in case it gets overwritten
-            uint64_t prevMicros = imuData.micros;
-
-            int16_t data[7];
-            float temp;
-
-            if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
-                temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
-                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-                imuData.micros = tmpMicros;
-                imuData.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
-                imuData.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
-                imuData.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                imuData.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR - AXOFFS;
-                imuData.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR - AYOFFS;
-                imuData.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR - AZOFFS;
-                xSemaphoreGive(imuDataMutex);
-            } else {
-                temp = NAN;
-                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-                imuData.micros = tmpMicros;
-                imuData.Gx = NAN;
-                imuData.Gy = NAN;
-                imuData.Gz = NAN;
-                imuData.Ax = NAN;
-                imuData.Ay = NAN;
-                imuData.Az = NAN;
-                xSemaphoreGive(imuDataMutex);
-            }
-
-            xTaskNotifyGive(imuTaskToNotify);
-
-            // printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+        // Wait for notification from ISR
+        uint64_t tmpMicros;
+        if (ulTaskNotifyTake(true, pdMS_TO_TICKS(200))) { // If it's been more than 5 milliseconds since last read, read anyways, but don't use micros from irq
+            tmpMicros = imuIrqMicros; // Save the current time in case it gets overwritten
+        } else {
+            tmpMicros = to_us_since_boot(get_absolute_time());
         }
+
+        // printf("Reading IMU\n");
+
+
+        // Reading temperature too for the hell of it
+        uint64_t prevMicros = imuData.micros;
+
+        int16_t data[7];
+        float temp;
+
+        if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
+            temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
+            xSemaphoreTake(imuDataMutex, portMAX_DELAY);
+            imuData.micros = tmpMicros;
+            imuData.Gx = (data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS) * M_PI / 180 ;
+            imuData.Gy = (data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS) * M_PI / 180;
+            imuData.Gz = (data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS) * M_PI / 180;
+            imuData.Ax = (data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS) * GRAVITY;
+            imuData.Ay = (data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS) * GRAVITY;
+            imuData.Az = (data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS) * GRAVITY;
+            xSemaphoreGive(imuDataMutex);
+        } else {
+            temp = NAN;
+            xSemaphoreTake(imuDataMutex, portMAX_DELAY);
+            imuData.micros = tmpMicros;
+            imuData.Gx = NAN;
+            imuData.Gy = NAN;
+            imuData.Gz = NAN;
+            imuData.Ax = NAN;
+            imuData.Ay = NAN;
+            imuData.Az = NAN;
+            xSemaphoreGive(imuDataMutex);
+        }
+
+        // printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+
+        xTaskNotifyGive(imuTaskToNotify);
     }
 }

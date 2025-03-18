@@ -17,13 +17,17 @@
 
 
 void printKalmanState(TimerHandle_t xTimer) {
+    // imuData_t imu;
+    // imuGetData(&imu);
+    // printf("%10lluus\t% 7.4fm/s^2x\t% 7.4fm/s^2y\t% 7.4fm/s^2z\t% 7.4frad/sx\t% 7.4frad/sy\t% 7.4frad/sz\n", imu.micros, imu.Ax, imu.Ay, imu.Az, imu.Gx, imu.Gy, imu.Gz);
+
     kalmanState_t s;
     kalmanGetState(&s);
     float degBeta = M_PI / 180.0 * s.beta;
     float degVBeta = M_PI / 180.0 * s.vbeta;
     float degGamma = M_PI / 180.0 * s.gamma;
     float degVGamma = M_PI / 180.0 * s.vgamma;
-    printf("Z:% 7.3f\tvZ:% 7.3f\tX:% 7.3f\tvX:% 7.3f\tBeta:% 7.3f\tvBeta:% 7.3f\tGamma:% 7.3f\tvGamma:% 7.3f\t", s.z, s.vz, s.x, s.vx, degBeta, degVBeta, degGamma, degVGamma);
+    printf("Z:% 7.3f\tvZ:% 7.3f\tX:% 7.3f\tvX:% 7.3f\tBeta:% 7.3f\tvBeta:% 7.3f\tGamma:% 7.3f\tvGamma:% 7.3f\n", s.z, s.vz, s.x, s.vx, degBeta, degVBeta, degGamma, degVGamma);
 }
 
 
@@ -41,16 +45,19 @@ int main()
     }
     printf("Start ==========================================================================\n");
 
+
     TaskHandle_t kalmanTask = kalmanSetup();
     imuSetup(kalmanTask);
     encoderSetup();
-    //servoSetup();
-    //lidarSetup();
+    // servoSetup();
+    // lidarSetup();
+
+    printf("Setup complete!\n");
 
     
 
     static StaticTimer_t timerBuffer;
-    TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", 10, pdTRUE, NULL, printKalmanState, &timerBuffer);
+    TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", pdMS_TO_TICKS(100), pdTRUE, NULL, printKalmanState, &timerBuffer);
     xTimerStart(printTimer, portMAX_DELAY);
 
     vTaskStartScheduler();

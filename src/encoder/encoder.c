@@ -8,7 +8,7 @@
 #include "simple_encoder_substep.h"
 
 
-# define METERS_PER_SUBSTEP 20 // Insert correct value here
+# define METERS_PER_SUBSTEP 0.010 // Insert correct value here
 
 
 static substep_state_t state;

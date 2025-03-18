@@ -73,12 +73,12 @@ Y vector:
 #define SB  (0.5*(M_PI / 180.0 * 20)) // 20 degrees ~= 2 sigma (95% confidence) for roll
 #define SG  (0.5*(M_PI / 180.0 * 10)) // 10 degrees ~= 2 sigma (95% confidence) for pitch
 static const float_prec PINIT_data[SS_X_LEN*SS_X_LEN] = {
-    0,  0,  0,  0,  0,      0,      // Define z=0
-    0,  0,  0,  0,  0,      0,      // Know vz=0 (Car is still)
-    0,  0,  0,  0,  0,      0,      // Define x=0
-    0,  0,  0,  0,  0,      0,      // Know vx=0 (Car is still)
-    0,  0,  0,  0,  SB*SB,  0,      // beta within ~20degrees 95% of the time
-    0,  0,  0,  0,  0,      SG*SG,  // ga
+    1e-6,   0,      0,      0,      0,      0,      // Define z=0
+    0,      1e-6,   0,      0,      0,      0,      // Know vz=0 (Car is still)
+    0,      0,      1e-6,   0,      0,      0,      // Define x=0
+    0,      0,      0,      1e-6,   0,      0,      // Know vx=0 (Car is still)
+    0,      0,      0,      0,      SB*SB,  0,      // beta within ~20degrees 95% of the time
+    0,      0,      0,      0,      0,      SG*SG,  // ga
 };
 #undef SB
 #undef SG
@@ -88,7 +88,7 @@ static Matrix PINIT(SS_X_LEN, SS_X_LEN, PINIT_data);
 #define Favg 833.0
 #define SL  (0.001/Favg) // 1mm drift/s
 #define SV  (0.001/Favg) // 1mm/s drift/s
-#define SA  ((M_PI / 180.0 * 0.01)/Favg) // 0.01 degree drift/s
+#define SA  ((M_PI / 180.0 * 0.001)/Favg) // 0.01 degree drift/s
 static const float_prec Rv_data[SS_X_LEN*SS_X_LEN] = { 
     SL*SL,  0,      0,      0,      0,      0,
     0,      SV*SV,  0,      0,      0,      0,
@@ -146,7 +146,7 @@ static float_prec dt;
 
 // FreeRTOS task
 static StaticTask_t kalmanTaskBuffer;
-static StackType_t kalmanStackBuffer[2000];
+static StackType_t kalmanStackBuffer[8000];
 static TaskHandle_t kalmanTask;
 
 
@@ -170,12 +170,13 @@ static void kalmanTaskFunc(void *) {
     // Wait for notification from IMU code
     while (true) {
         if (ulTaskNotifyTake(true, portMAX_DELAY)) {
+            // printf("Calculating Kalman\n");
+
             // Get data
             imuData_t imuData;
             imuGetData(&imuData);
 
             if (isnan(imuData.Gx) || isnan(imuData.Gy) || isnan(imuData.Gz) || isnan(imuData.Ax) || isnan(imuData.Ay) || isnan(imuData.Az)) {
-                printf("IMU Nan!\n");
                 continue;
             }
 
@@ -188,9 +189,9 @@ static void kalmanTaskFunc(void *) {
             prevMicros = imuData.micros;
             
             const float_prec Y_data[SS_Z_LEN] = {
-                imuData.Ax,
-                imuData.Ay,
-                imuData.Az,
+                -imuData.Ax,
+                -imuData.Ay,
+                -imuData.Az,
                 position,
                 speed,
                 0,
@@ -202,9 +203,9 @@ static void kalmanTaskFunc(void *) {
                 imuData.Gx,
                 imuData.Gy,
                 imuData.Gz,
-                imuData.Ax,
-                imuData.Ay,
-                imuData.Az,
+                -imuData.Ax,
+                -imuData.Ay,
+                -imuData.Az,
             };
             Matrix U(SS_U_LEN, 1, U_data);
 
@@ -276,7 +277,7 @@ static bool Main_bUpdateNonlinearX(Matrix& X_Next, const Matrix& X, const Matrix
     Matrix IMU(3, 2, IMU_data);
     
     Matrix U_Trans = Rotation * IMU;
-    const float_prec az = U_Trans[2][0];
+    const float_prec az = U_Trans[2][0] + GRAVITY;
     const float_prec ax = U_Trans[0][0];
     // Save vbeta and vgamma to static variables to save for later
     vbeta = U_Trans[0][0];
