@@ -11,6 +11,7 @@
 static StaticTask_t escTaskBuffer;
 static StackType_t escStackBuffer[1000];
 TaskHandle_t escTask;
+void escTaskFunc(void *);
 
 void escSetup() {
     gpio_set_function(ESC_PIN, GPIO_FUNC_PWM);  // Set pin as PWM
@@ -36,8 +37,11 @@ void escSetup() {
 }
 
 void escTaskFunc(void *) {
-    pwm_set_gpio_level(ESC_PIN, 1700);
-    sleep_ms(3000);
-    vTaskDelay(4);
+    while (true) {
+        pwm_set_gpio_level(ESC_PIN, 1700);
+        sleep_ms(3000);
+        vTaskDelay(4);
+    }
+    
 }
 
