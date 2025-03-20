@@ -5,6 +5,7 @@
 #include "imu.h"
 #include "servo.h"
 #include "pid.h"
+#include "drive_esc.h"
 
 
 // The i2c_dma_* functions block the calling task, but allow other tasks to continue running.
@@ -30,8 +31,8 @@ int main()
 
     //imuSetup();
     //servoSetup();
-    pidSetup();
-
+    //pidSetup();
+    escSetup();
     vTaskStartScheduler();
     
 }

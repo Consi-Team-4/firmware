@@ -4,6 +4,7 @@
 #include "hardware/gpio.h"
 #include "hardware/pwm.h"
 #include "servo.h"
+#include "drive_esc.h"
 
 #define ESC_PIN 15
 
@@ -11,7 +12,7 @@ static StaticTask_t escTaskBuffer;
 static StackType_t escStackBuffer[1000];
 TaskHandle_t escTask;
 
-void arm_esc() {
+void escSetup() {
     gpio_set_function(ESC_PIN, GPIO_FUNC_PWM);  // Set pin as PWM
     const uint slice_num = pwm_gpio_to_slice_num(ESC_PIN); // Get PWM slice
     //pwm_set_clkdiv(slice_num, 64.0); // Set clock divider for ~50Hz
@@ -29,22 +30,14 @@ void arm_esc() {
     printf("full throttle \n");
     pwm_set_enabled(slice_num, true); 
     sleep_ms(3000);
-    printf("esc armed!");
+    printf("esc armed! \n");
 
     escTask = xTaskCreateStatic(escTaskFunc, "escTask", sizeof(escStackBuffer)/sizeof(StackType_t), NULL, 3, escStackBuffer, &escTaskBuffer);
 }
 
 void escTaskFunc(void *) {
-
-    
-    
-    while (true) {
-        // Swap out with timer later?
-
-        
-
-        pwm_set_gpio_level(ESC_PIN, (int)(1500 + 1000*(imuData.ThetaZ/135.0)));
-        vTaskDelay(4);
-    }
+    pwm_set_gpio_level(ESC_PIN, 1700);
+    sleep_ms(3000);
+    vTaskDelay(4);
 }
 
