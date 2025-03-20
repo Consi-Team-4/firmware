@@ -6,6 +6,7 @@ add_executable(${ProjectName}
     main.c
     servo.c
     esc_pid.c
+    drive_esc.c
 )
 
 pico_generate_pio_header(${ProjectName}
