@@ -64,6 +64,8 @@
         "numbers": "cpp",
         "math.h": "c",
         "encoder.h": "c",
-        "irq.h": "c"
+        "irq.h": "c",
+        "stdio.h": "c",
+        "config.h": "c"
     }
 }
