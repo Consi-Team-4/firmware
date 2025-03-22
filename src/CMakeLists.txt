@@ -1,43 +1,25 @@
-cmake_minimum_required(VERSION 3.13)
-include(pico_sdk_import.cmake)
-
-project(ActiveSuspensionRC C CXX ASM)
-
-pico_sdk_init()
-
 add_executable(${ProjectName}
+    encoder/encoder.c
+    encoder/simple_encoder_substep.c
+    imu/imu.c
+    lidar/lidar.c
+    debug.c
+    freeRTOSHelpers.c
+    kalman.cpp
     main.c
-    # Sensors
-    src/sensors/imu.c
-    src/sensors/lidar.c
-    src/sensors/encoder.c
-    # Controllers
-    src/controllers/speed_controller.c
-    src/controllers/suspension_controller.c
-    src/controllers/pid.c
-    # Tasks
-    src/tasks/imu_task.c
-    src/tasks/wifi_task.c
-    src/tasks/lidar_task.c
-    src/tasks/debug_task.c
-    src/tasks/task_common.c
-    # Utils
-    src/utils/FreeRTOSHelpers.c
-    src/utils/servo.c
-    src/utils/kalman.cpp
+    servo.c
 )
 
-# If you use PIO code from encoder folder
 pico_generate_pio_header(${ProjectName}
     ${CMAKE_CURRENT_LIST_DIR}/encoder/simple_encoder_substep.pio
 )
 
+
 target_include_directories(${ProjectName} PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/include
-    ${CMAKE_CURRENT_LIST_DIR}/src/sensors
-    ${CMAKE_CURRENT_LIST_DIR}/src/controllers
-    ${CMAKE_CURRENT_LIST_DIR}/src/tasks
-    ${CMAKE_CURRENT_LIST_DIR}/src/utils
+    ${CMAKE_CURRENT_LIST_DIR}
+    ${CMAKE_CURRENT_LIST_DIR}/encoder
+    ${CMAKE_CURRENT_LIST_DIR}/imu
+    ${CMAKE_CURRENT_LIST_DIR}/lidar
 )
 
 target_link_libraries(${ProjectName} 
@@ -50,8 +32,11 @@ target_link_libraries(${ProjectName}
     FreeRTOS-Kernel-Heap4
     i2c_dma
     ukf_engl
-)
+    )
 
+# Enable Stdio over usb
 pico_enable_stdio_uart(${ProjectName} 0)
 pico_enable_stdio_usb(${ProjectName} 1)
+
+# Needed to generate the UF2 or elf or something like that.
 pico_add_extra_outputs(${ProjectName})
