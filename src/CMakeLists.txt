@@ -11,7 +11,12 @@ add_executable(${ProjectName}
     sensors/imu.c
     sensors/lidar.c
 
-    # Utilities
+    # Tasks: Active components
+    tasks/heartbeat.c
+
+
+    # Utilities: Passive helper functions 
+    utils/log.c
     utils/debug.c
     utils/freeRTOSHelpers.c
     utils/kalman.cpp
@@ -27,6 +32,7 @@ target_include_directories(${ProjectName} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
     ${CMAKE_CURRENT_LIST_DIR}/controllers
     ${CMAKE_CURRENT_LIST_DIR}/sensors
+    ${CMAKE_CURRENT_LIST_DIR}/tasks
     ${CMAKE_CURRENT_LIST_DIR}/utils
 )
 

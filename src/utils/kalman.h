@@ -4,11 +4,8 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-// C definitions for interaction with the rest of the code
-
-
 // Returns the handle to the kalman filter task
-// This task can get notified by the IMU code whenever a new measurement is ready
+// This task gets notified by the IMU code whenever a new measurement is ready
 TaskHandle_t kalmanSetup(void);
 
 typedef struct kalmanState_s {
@@ -23,6 +20,7 @@ typedef struct kalmanState_s {
     float vgamma;
 } kalmanState_t;
 
+// Gets a copy of the current kalman state
 void kalmanGetState(kalmanState_t *buf);
 
-#endif
+#endif // KALMAN_H
