@@ -1,27 +1,36 @@
 add_executable(${ProjectName}
-    encoder/encoder.c
-    encoder/simple_encoder_substep.c
-    imu/imu.c
-    lidar/lidar.c
-    debug.c
-    freeRTOSHelpers.c
-    kalman.cpp
+    # Core
     main.c
-    servo.c
+
+    # Controllers
+    controllers/encoder.c
+    controllers/servo.c
+    controllers/simple_encoder_substep.c
+
+    # Sensors
+    sensors/imu.c
+    sensors/lidar.c
+
+    # Utilities
+    utils/debug.c
+    utils/freeRTOSHelpers.c
+    utils/kalman.cpp
 )
 
+# PIO header generation (adjust if you're using more .pio files)
 pico_generate_pio_header(${ProjectName}
-    ${CMAKE_CURRENT_LIST_DIR}/encoder/simple_encoder_substep.pio
+    ${CMAKE_CURRENT_LIST_DIR}/controllers/simple_encoder_substep.pio
 )
 
-
+# Include directories
 target_include_directories(${ProjectName} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/encoder
-    ${CMAKE_CURRENT_LIST_DIR}/imu
-    ${CMAKE_CURRENT_LIST_DIR}/lidar
+    ${CMAKE_CURRENT_LIST_DIR}/controllers
+    ${CMAKE_CURRENT_LIST_DIR}/sensors
+    ${CMAKE_CURRENT_LIST_DIR}/utils
 )
 
+# Linked libraries
 target_link_libraries(${ProjectName} 
     pico_stdlib
     hardware_pwm
@@ -32,11 +41,11 @@ target_link_libraries(${ProjectName}
     FreeRTOS-Kernel-Heap4
     i2c_dma
     ukf_engl
-    )
+)
 
-# Enable Stdio over usb
+# Enable USB and UART stdio
 pico_enable_stdio_uart(${ProjectName} 0)
 pico_enable_stdio_usb(${ProjectName} 1)
 
-# Needed to generate the UF2 or elf or something like that.
+# UF2 and ELF output
 pico_add_extra_outputs(${ProjectName})
