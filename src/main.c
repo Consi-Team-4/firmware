@@ -5,6 +5,7 @@
 #include "imu.h"
 #include "servo.h"
 #include "pid.h"
+#include "encoder.h"
 #include "drive_esc.h"  // Make sure this matches your include path
 
 
@@ -49,7 +50,9 @@ int main() {
     }
 
     printf("Starting ESC control system...\n");
-
+    encoderSetup();
+    encoderRead(&position, &speed);
+    printf("pos: %.2f m, speed: %.2f m/s \n", position, speed);
     escSetup();  // Initialize ESC control + serial task
 
     vTaskStartScheduler();  // Start FreeRTOS scheduler (never returns)
