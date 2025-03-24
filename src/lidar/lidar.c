@@ -209,6 +209,11 @@ static void uart0RxISR(void)
     portYIELD_FROM_ISR(&higherPriorityTaskWoken);
 }
 
+int mapDistanceToAngle(int distance)
+{
+    return (distance - 0) * (180 - 0) / (10000 - 0);
+}
+
 static void lidarTaskFunc(void *)
 {
     // Wait for notification from ISR
@@ -229,9 +234,9 @@ static void lidarTaskFunc(void *)
 
             if (variance > tolerance)
             {
-                double delta; // value to hold amount that the servo should move
-                // calculate servo distance, set delta to this amt
-                adjustServoPosition(delta); // call servo function, pass in servo setting
+                double delta = mapDistanceToAngle(distance); // value to hold amount that the servo should move
+                                                             // calculate servo distance, set delta to this amt
+                adjustServoPosition(delta, distance);        // call servo function, pass in servo setting
             }
 
             // Reset

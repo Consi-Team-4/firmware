@@ -2,6 +2,6 @@
 #define SERVO_H
 
 void servoSetup();
-void adjustServoPosition(double delta);
+void adjustServoPosition(double delta, int lidarReading);
 
 #endif
