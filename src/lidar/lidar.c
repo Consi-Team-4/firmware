@@ -1,4 +1,6 @@
 #include "lidar.h"
+#include "math.h"
+#include "servo.h"
 
 #include "FreeRTOS.h"
 #include "task.h"
@@ -14,12 +16,24 @@ static volatile uint8_t lidar0Index = 0;
 
 static int maxQueueSize = 50;
 
+static double tolerance = 5;
+
 static StaticTask_t lidarTaskBuffer;
 static StackType_t lidarStackBuffer[1000];
 static TaskHandle_t lidarTask;
 
 static void uart0RxISR(void);
 static void lidarTaskFunc(void *);
+typedef struct
+{
+    int data[50];
+    int front;
+    int rear;
+    int size;
+    int max;
+} Queue;
+
+Queue q_1;
 
 /**
  * Initialize queue of fixed length
@@ -37,7 +51,15 @@ void initQueue(Queue *q)
  */
 int isFull(Queue *q)
 {
-    return (q->size == 50); // q->max
+    return (q->size == maxQueueSize); // q->max
+}
+
+/**
+ * Return size of queue
+ */
+int queueSize(Queue *q)
+{
+    return (q->size);
 }
 
 /**
@@ -46,6 +68,23 @@ int isFull(Queue *q)
 int isEmpty(Queue *q)
 {
     return (q->size == 0);
+}
+
+/**
+ * Removes the first item from the queue.
+ */
+int dequeue(Queue *q)
+{
+    if (isEmpty(q))
+    {
+        printf("Queue is empty\n");
+        return -1;
+    }
+
+    int item = q->data[q->front];
+    q->front = (q->front + 1) % 50; // q->max;
+    q->size--;
+    return item;
 }
 
 /**
@@ -69,23 +108,6 @@ void enqueue(Queue *q, int item)
 }
 
 /**
- * Removes the first item from the queue.
- */
-int dequeue(Queue *q)
-{
-    if (isEmpty(q))
-    {
-        printf("Queue is empty\n");
-        return -1;
-    }
-
-    int item = q->data[q->front];
-    q->front = (q->front + 1) % 50; // q->max;
-    q->size--;
-    return item;
-}
-
-/**
  * Prints out all of the items in the queue
  */
 void display(Queue *q)
@@ -103,9 +125,32 @@ void display(Queue *q)
     printf("\n");
 }
 
+double calculate_queue_variance(Queue *q, int size)
+{
+    double sum = 0, mean, variance = 0;
+
+    // Calculate the mean
+    for (int i = 0; i < size; i++)
+    {
+        sum += q->data[i];
+    }
+    mean = sum / size;
+
+    // Calculate the variance
+    for (int i = 0; i < size; i++)
+    {
+        variance += pow(q->data[i] - mean, 2);
+    }
+    variance /= size;
+
+    return variance;
+}
+
 void lidarSetup()
 {
 
+    // Set up queue for lidar distance data
+    initQueue(&q_1);
     // Set up uart0 for lidar 0
     uart_init(uart0, 115200);
     gpio_set_function(16, UART_FUNCSEL_NUM(uart0, 16)); // GPIO16/D4 is Uart TX
@@ -175,7 +220,19 @@ static void lidarTaskFunc(void *)
             uint16_t distance = ((uint16_t *)lidar0Buffer)[1];
             uint16_t strength = ((uint16_t *)lidar0Buffer)[2];
             float temperature = ((uint16_t *)lidar0Buffer)[3] / 8.0 - 256;
-            printf("% 5ucm\t% 5u\t% 7.3fC\n", distance, strength, temperature);
+
+            // Put value for distance into queue
+            enqueue(&q_1, distance);
+
+            uint16_t variance = calculate_queue_variance(&q_1, queueSize(&q_1));
+            printf("% 5ucm\t% 5u\t% 7.3fC\t% 5u\n", distance, strength, temperature, variance);
+
+            if (variance > tolerance)
+            {
+                double delta; // value to hold amount that the servo should move
+                // calculate servo distance, set delta to this amt
+                adjustServoPosition(delta); // call servo function, pass in servo setting
+            }
 
             // Reset
             lidar0Index = 0;
