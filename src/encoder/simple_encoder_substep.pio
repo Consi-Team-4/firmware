@@ -91,6 +91,7 @@ table:
 
 % c-sdk {
 
+#include "hardware/timer.h"
 #include "hardware/clocks.h"
 #include "hardware/gpio.h"
 #include "hardware/sync.h"

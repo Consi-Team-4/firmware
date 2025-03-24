@@ -1,5 +1,6 @@
 add_executable(${ProjectName}
     encoder/simple_encoder_substep.c
+    encoder/encoder.c
     imu/imu.c
     debug.c
     freeRTOSHelpers.c

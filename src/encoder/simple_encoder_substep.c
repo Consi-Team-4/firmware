@@ -4,16 +4,15 @@
  * SPDX-License-Identifier: BSD-3-Clause
  */
 
+#include "simple_encoder_substep.h"
+
+
 #include <stdio.h>
 #include <string.h>
 #include "pico/stdlib.h"
-#include "hardware/pio.h"
-#include "hardware/timer.h"
-#include "hardware/pwm.h"
-#include <pico/divider.h>
 
-#include "simple_encoder_substep.pio.h"
-#include "simple_encoder_substep.h"
+#include "hardware/timer.h"
+#include <pico/divider.h>
 
 //
 // ---- quadrature encoder interface with sub-step accuracy
@@ -31,34 +30,13 @@
 
 // the quadrature encoder code starts here
 
-//typedef struct substep_state_t {
-    // configuration data:
-//    uint calibration_data[2]; // relative phase sizes
-//    uint clocks_per_us;       // save the clk_sys frequency in clocks per us
-//    uint idle_stop_samples;   // after these samples without transitions, assume the encoder is stopped
-//    PIO pio;
-//    uint sm;
 
-    // internal fields to keep track of the previous state:
-//    uint prev_trans_pos, prev_trans_us;
-//    uint prev_step_us;
-//    uint prev_low, prev_high;
-//    uint idle_stop_sample_count;
-//    int speed_2_20;
-//    int stopped;
 
-    // output of the encoder update function:
-//    int speed;     // estimated speed in substeps per second
-//    uint position; // estimated position in substeps
-
-//    uint raw_step; // raw step count
-//} substep_state_t;
 
 
 // internal helper functions (not to be used by user code)
 
 static void read_pio_data(substep_state_t *state, uint *step, uint *step_us, uint *transition_us)
-//void read_pio_data(substep_state_t *state, uint *step, uint *step_us, uint *transition_us)
 {
     int cycles;
 
@@ -68,22 +46,24 @@ static void read_pio_data(substep_state_t *state, uint *step, uint *step_us, uin
     // when the PIO program detects a transition, it sets cycles to either zero
     // and keeps decrementing it on each 13 clock loop.
     // We can use this information to get the time of the last transition
+
+    // Reverse these because PIO decrements, but numbers are nicer if they go up
     cycles = -cycles;
+    *step = -*step;
     *transition_us = *step_us - ((cycles * 13) / state->clocks_per_us);
 }
 
 // get the sub-step position of the start of a step
 static uint get_step_start_transition_pos(substep_state_t *state, uint step)
-//uint get_step_start_transition_pos(substep_state_t *state, uint step)
 {
-    return ((step << 6) & 0xFFFFFF00) | state->calibration_data[step & 1];
+    // Bitshift by 7 because 256 substeps per step, but 2 steps per rotation
+    return ((step << 7) & 0xFFFFFF00) | state->calibration_data[step & 1];
 }
 
 // compute speed in "sub-steps per 2^20 us" from a delta substep position and
 // delta time in microseconds. This unit is cheaper to compute and use, so we
 // only convert to "sub-steps per second" once per update, at most
 static int substep_calc_speed(int delta_substep, int delta_us)
-//int substep_calc_speed(int delta_substep, int delta_us)
 {
     return ((int64_t) delta_substep << 20) / delta_us;
 }
@@ -93,8 +73,7 @@ static int substep_calc_speed(int delta_substep, int delta_us)
 // main functions to be used by user code
 
 // initialize the substep state structure and start PIO code
-static void substep_init_state(PIO pio, int sm, int pin_a, substep_state_t *state)
-//void substep_init_state(PIO pio, int sm, int pin_a, substep_state_t *state)
+void substep_init_state(PIO pio, int sm, int pin_a, substep_state_t *state)
 {
     // set all fields to zero by default
     memset(state, 0, sizeof(substep_state_t));
@@ -124,14 +103,19 @@ static void substep_init_state(PIO pio, int sm, int pin_a, substep_state_t *stat
 
 
 // read the PIO data and update the speed / position estimate
-static void substep_update(substep_state_t *state)
-//void substep_update(substep_state_t *state)
+void substep_update(substep_state_t *state)
 {
     uint step, step_us, transition_us, transition_pos, low, high;
     int speed_high, speed_low;
 
     // read the current encoder state from the PIO
+    // gets # steps, microsecond it was read at, and microsecond corresponding to the last time there was a transition
     read_pio_data(state, &step, &step_us, &transition_us);
+
+    // from the current step we can get the low and high boundaries in substeps
+    // of the current position
+    low = get_step_start_transition_pos(state, step);
+    high = get_step_start_transition_pos(state, step + 1);
 
     // if we were not stopped, but the last transition was more than
     // "idle_stop_samples" ago, we are stopped now
@@ -164,6 +148,7 @@ static void substep_update(substep_state_t *state)
         state->prev_trans_us = transition_us;
     }
 
+
     // if we are stopped, speed is zero and the position estimate remains
     // constant. If we are not stopped, we have to update the position and speed
     if (!state->stopped) {
@@ -191,6 +176,7 @@ static void substep_update(substep_state_t *state)
             speed_high = substep_calc_speed(high - state->prev_trans_pos, step_us - state->prev_trans_us);
             speed_low = substep_calc_speed(low - state->prev_trans_pos, step_us - state->prev_trans_us);
         }
+
         // make sure the current speed estimate is between the maximum and
         // minimum values obtained from the step slopes
         if (state->speed_2_20 > speed_high)
@@ -225,8 +211,7 @@ static void substep_update(substep_state_t *state)
 
 
 // function to measure the difference between the different steps on the encoder
-static void substep_calibrate_phases(PIO pio, uint sm)
-//void substep_calibrate_phases(PIO pio, uint sm)
+void substep_calibrate_phases(PIO pio, uint sm)
 {
 #define sample_count  1024
 //#define SHOW_ALL_SAMPLES
@@ -305,32 +290,30 @@ static void substep_calibrate_phases(PIO pio, uint sm)
 // don't have the same size. To get good substep accuracy, the code should know
 // about this. This is specially important at low speeds with encoders that have
 // big phase size differences
-static void substep_set_calibration_data(substep_state_t *state, int step0)
-//void substep_set_calibration_data(substep_state_t *state, int step0)
+void substep_set_calibration_data(substep_state_t *state, int step0)
 {
     state->calibration_data[0] = 0;
     state->calibration_data[1] = step0;
 }
 
 
-/** 
-int main(void)
 
-{
-    substep_state_t state;
+// int main(void)
+// {
+//     substep_state_t state;
 
 //     // base pin to connect the A phase of the encoder. the B phase must be
 //     // connected to the next pin
-    const uint PIN_A = 10;
+//     const uint PIN_A = 10;
 
-    stdio_init_all();
-    printf("Hello from quadrature encoder substep\n");
+//     stdio_init_all();
+//     printf("Hello from quadrature encoder substep\n");
 
-    PIO pio = pio0;
-    const uint sm = 0;
+//     PIO pio = pio0;
+//     const uint sm = 0;
 
-    pio_add_program(pio, &simple_encoder_substep_program);
-     substep_init_state(pio, sm, PIN_A, &state);
+//     pio_add_program(pio, &simple_encoder_substep_program);
+//     substep_init_state(pio, sm, PIN_A, &state);
 
 //     // example calibration code, uncomment to calibrate the encoder:
 
@@ -345,25 +328,25 @@ int main(void)
 // //    set_pwm(0);
 
 //     // replace this with the output of the calibration function
-    substep_set_calibration_data(&state, 128);
+//     substep_set_calibration_data(&state, 128);
 
-    uint last_position = 0;
-    int last_speed = 0;
-    uint last_raw_step = 0;
-    while (1) {
+//     uint last_position = 0;
+//     int last_speed = 0;
+//     uint last_raw_step = 0;
+//     while (1) {
 
 //         // read the PIO and update the state data
-        substep_update(&state);
+//         substep_update(&state);
 
-        if (last_position != state.position || last_speed != state.speed || last_raw_step != state.raw_step) {
-             // print out the result
-            printf("pos: %-10d  speed: %-10d  raw_steps: %-10d\n", state.position, state.speed, state.raw_step);
-            last_position = state.position;
-            last_speed = state.speed;
-            last_raw_step = state.raw_step;
-        }
+//         if (last_position != state.position || last_speed != state.speed || last_raw_step != state.raw_step) {
+//             // print out the result
+//             printf("pos: %-10d  speed: %-10d  raw_steps: %-10d\n", state.position, state.speed, state.raw_step);
+//             last_position = state.position;
+//             last_speed = state.speed;
+//             last_raw_step = state.raw_step;
+//         }
 
-         // run at roughly 100Hz
-        sleep_ms(10);
-    }
-}*/
+//         // run at roughly 100Hz
+//         sleep_ms(10);
+//     }
+// }
