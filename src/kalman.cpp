@@ -73,10 +73,10 @@ Y vector:
 #define SB  (0.5*(M_PI / 180.0 * 20)) // 20 degrees ~= 2 sigma (95% confidence) for roll
 #define SG  (0.5*(M_PI / 180.0 * 10)) // 10 degrees ~= 2 sigma (95% confidence) for pitch
 static const float_prec PINIT_data[SS_X_LEN*SS_X_LEN] = {
-    1e-6,   0,      0,      0,      0,      0,      // Define z=0
-    0,      1e-6,   0,      0,      0,      0,      // Know vz=0 (Car is still)
-    0,      0,      1e-6,   0,      0,      0,      // Define x=0
-    0,      0,      0,      1e-6,   0,      0,      // Know vx=0 (Car is still)
+    1e-2,   0,      0,      0,      0,      0,      // Define z=0
+    0,      1e-2,   0,      0,      0,      0,      // Know vz=0 (Car is still)
+    0,      0,      1e-2,   0,      0,      0,      // Define x=0
+    0,      0,      0,      1e-2,   0,      0,      // Know vx=0 (Car is still)
     0,      0,      0,      0,      SB*SB,  0,      // beta within ~20degrees 95% of the time
     0,      0,      0,      0,      0,      SG*SG,  // ga
 };
@@ -85,10 +85,9 @@ static const float_prec PINIT_data[SS_X_LEN*SS_X_LEN] = {
 static Matrix PINIT(SS_X_LEN, SS_X_LEN, PINIT_data);
 
 // Process noise covariance (includes IMU)
-#define Favg 833.0
-#define SL  (0.001/Favg) // 1mm drift/s
-#define SV  (0.001/Favg) // 1mm/s drift/s
-#define SA  ((M_PI / 180.0 * 0.001)/Favg) // 0.01 degree drift/s
+#define SL  0.1
+#define SV  0.1
+#define SA  0.01
 static const float_prec Rv_data[SS_X_LEN*SS_X_LEN] = { 
     SL*SL,  0,      0,      0,      0,      0,
     0,      SV*SV,  0,      0,      0,      0,
@@ -97,17 +96,16 @@ static const float_prec Rv_data[SS_X_LEN*SS_X_LEN] = {
     0,      0,      0,      0,      SA*SA,  0, 
     0,      0,      0,      0,      0,      SA*SA,
 };
-#undef Favg
 #undef SL
 #undef SV
 #undef SA
 static Matrix Rv(SS_X_LEN, SS_X_LEN, Rv_data);
 
 // Measurement noise covariance
-#define SA  (0.5*(0.010)) // 10mm/s^2 ~= 2 sigma (95% confidence) for accelerometer
+#define SA  0.01
 #define SP  (0.5*(0.5)) // 0.5m ~= 2 sigma (95% confidence) for encoder position
 #define SV  (1*(0.001)) // 1mm/s ~= 2 sigma (95% confidence) for encoder speed
-#define Z   1 // Made up value to stop Z from wandering off
+#define Z   10 // Made up value to stop Z from wandering off
 #define VZ  1 // Made up value to stop VZ from wandering off
 static const float_prec Rn_data[SS_Z_LEN*SS_Z_LEN] = {
     SA*SA,  0,      0,      0,      0,      0,      0,
@@ -188,47 +186,59 @@ static void kalmanTaskFunc(void *) {
             dt = 0.000001 * (imuData.micros - prevMicros);
             prevMicros = imuData.micros;
             
-            const float_prec Y_data[SS_Z_LEN] = {
-                -imuData.Ax,
-                -imuData.Ay,
-                -imuData.Az,
-                position,
-                speed,
-                0,
-                0,
-            };
-            Matrix Y(SS_Z_LEN, 1, Y_data);
+            // const float_prec Y_data[SS_Z_LEN] = {
+            //     -imuData.Ax,
+            //     -imuData.Ay,
+            //     -imuData.Az,
+            //     position,
+            //     speed,
+            //     0,
+            //     0,
+            // };
+            // Matrix Y(SS_Z_LEN, 1, Y_data);
 
-            const float_prec U_data[SS_U_LEN] = {
-                imuData.Gx,
-                imuData.Gy,
-                imuData.Gz,
-                -imuData.Ax,
-                -imuData.Ay,
-                -imuData.Az,
-            };
-            Matrix U(SS_U_LEN, 1, U_data);
+            // const float_prec U_data[SS_U_LEN] = {
+            //     imuData.Gx,
+            //     imuData.Gy,
+            //     imuData.Gz,
+            //     -imuData.Ax,
+            //     -imuData.Ay,
+            //     -imuData.Az,
+            // };
+            // Matrix U(SS_U_LEN, 1, U_data);
 
-            // Update kalman filter
-            if (!ukf.bUpdate(Y, U)) {
-                // Use better reset for X?
-                printf("Kalman Error!\n");
-                ukf.vReset(Matrix(SS_X_LEN, 1), PINIT, Rv, Rn);
-            }
+            // // Update kalman filter
+            // if (!ukf.bUpdate(Y, U)) {
+            //     // Use better reset for X?
+            //     printf("Kalman Error!\n");
+            //     ukf.vReset(Matrix(SS_X_LEN, 1), PINIT, Rv, Rn);
+            // }
             
 
-            // Save results to cache
-            Matrix X = ukf.GetX();
+            // // Save results to cache
+            // Matrix X = ukf.GetX();
+            // xSemaphoreTake(cacheMutex, portMAX_DELAY);
+            // cachedState.micros = prevMicros;
+            // cachedState.z = X[0][0];
+            // cachedState.vz = X[1][0];
+            // cachedState.x = X[2][0];
+            // cachedState.vx = X[3][0];
+            // cachedState.beta = X[4][0];
+            // cachedState.vbeta = vbeta;
+            // cachedState.gamma = X[5][0];
+            // cachedState.vgamma = vgamma;
+            // xSemaphoreGive(cacheMutex);
+
             xSemaphoreTake(cacheMutex, portMAX_DELAY);
             cachedState.micros = prevMicros;
-            cachedState.z = X[0][0];
-            cachedState.vz = X[1][0];
-            cachedState.x = X[2][0];
-            cachedState.vx = X[3][0];
-            cachedState.beta = X[4][0];
-            cachedState.vbeta = vbeta;
-            cachedState.gamma = X[5][0];
-            cachedState.vgamma = vgamma;
+            cachedState.z = 0.999*cachedState.z + dt*cachedState.vz - 0.5*dt*dt*(imuData.Az-GRAVITY);
+            cachedState.vz = 0.999*cachedState.vz - dt*(imuData.Az-GRAVITY);
+            cachedState.x = 0.999*cachedState.x + dt*cachedState.vx - 0.5*dt*dt*imuData.Ax;
+            cachedState.vx = 0.999*cachedState.vx - dt*imuData.Ax;
+            cachedState.beta = 0.999*cachedState.beta + dt*imuData.Gx;
+            cachedState.vbeta = imuData.Gx;
+            cachedState.gamma = 0.999*cachedState.gamma + dt*imuData.Gy;
+            cachedState.vgamma = imuData.Gy;
             xSemaphoreGive(cacheMutex);
         }
     }
@@ -347,4 +357,15 @@ void SPEW_THE_ERROR(char const * str)
         printf("%s\n", str);
     #endif
     while(1);
+}
+
+
+void printP() {
+    Matrix P = ukf.GetP();
+    for (int row = 0; row < SS_X_LEN; row++) {
+        for (int col = 0; col < SS_X_LEN; col++) {
+            printf("% 7.4f\t", P[row][col]);
+        }
+        printf("\n");
+    }
 }

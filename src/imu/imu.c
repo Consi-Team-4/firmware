@@ -20,12 +20,12 @@
 // These can then be passed to the kalman filter via a queue
 
 // For calibration purposes
-#define AXOFFS 0.035
-#define AYOFFS -0.028
-#define AZOFFS -0.034
-#define GXOFFS 0.5
-#define GYOFFS -0.9
-#define GZOFFS -0.7
+#define GXOFFS (0)//(33)
+#define GYOFFS (0)//(-50)
+#define GZOFFS (0)//(-45)
+#define AXOFFS (0)
+#define AYOFFS (0)
+#define AZOFFS (0)
 
 // Got pins from arduino nano rp2040 connect schematic
 #define INT1 24
@@ -97,8 +97,8 @@ void imuSetup(TaskHandle_t taskToNotify) {
     // Accelerometer: 833 Hz, +-4g, LPF2 filter
     res = writeRegisterSDK(REG_CTRL1_XL, 0b0110<<4 | 0b10<<2 | 0b1<<1);
     printf("CTRL1_XL:\t%s\n", errorToString(res));
-    // Gyroscope: 833 Hz, +-2000 dps, not +-125dps
-    res = writeRegisterSDK(REG_CTRL2_G,  0b0110<<4 | 0b11<<2 | 0b0<<1);
+    // Gyroscope: 833 Hz, +-500 dps, not +-125dps
+    res = writeRegisterSDK(REG_CTRL2_G,  0b0110<<4 | 0b01<<2 | 0b0<<1);
     printf("CTRL2_G:\t%s\n", errorToString(res));
     // Gyroscope: high performance mode, high pass disabled, 16MHz hp cuttof (irrelevant), OIS enable through SPI2, bypass accelerometer user offset, disable OIS (irrelevant)
     res = writeRegisterSDK(REG_CTRL7_G, 0x00);
@@ -251,12 +251,12 @@ static void imuTaskFunc(void *) {
             temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
             xSemaphoreTake(imuDataMutex, portMAX_DELAY);
             imuData.micros = tmpMicros;
-            imuData.Gx = (data[1] * 2000.0 / LSM6DSOX_FSR - GXOFFS) * M_PI / 180 ;
-            imuData.Gy = (data[2] * 2000.0 / LSM6DSOX_FSR - GYOFFS) * M_PI / 180;
-            imuData.Gz = (data[3] * 2000.0 / LSM6DSOX_FSR - GZOFFS) * M_PI / 180;
-            imuData.Ax = (data[4] * 4.0 / LSM6DSOX_FSR - AXOFFS) * GRAVITY;
-            imuData.Ay = (data[5] * 4.0 / LSM6DSOX_FSR - AYOFFS) * GRAVITY;
-            imuData.Az = (data[6] * 4.0 / LSM6DSOX_FSR - AZOFFS) * GRAVITY;
+            imuData.Gx = (data[1] - GXOFFS) * 500.0 / LSM6DSOX_FSR * M_PI / 180;
+            imuData.Gy = (data[2] - GYOFFS) * 500.0 / LSM6DSOX_FSR * M_PI / 180;
+            imuData.Gz = (data[3] - GZOFFS) * 500.0 / LSM6DSOX_FSR * M_PI / 180;
+            imuData.Ax = (data[4] - AXOFFS) * 4.0 / LSM6DSOX_FSR * GRAVITY ;
+            imuData.Ay = (data[5] - AYOFFS) * 4.0 / LSM6DSOX_FSR * GRAVITY ;
+            imuData.Az = (data[6] - AZOFFS) * 4.0 / LSM6DSOX_FSR * GRAVITY ;
             xSemaphoreGive(imuDataMutex);
         } else {
             temp = NAN;
@@ -271,7 +271,7 @@ static void imuTaskFunc(void *) {
             xSemaphoreGive(imuDataMutex);
         }
 
-        // printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+        // printf("%10lluus\tT:% 6u\tGx:% 6d\tGy:% 6d\tGz:% 6d\tAx:% 6d\tAy:% 6d\tAz:% 6d\n", imuData.micros, data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
 
         xTaskNotifyGive(imuTaskToNotify);
     }

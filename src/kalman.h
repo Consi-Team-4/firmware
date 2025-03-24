@@ -25,4 +25,6 @@ typedef struct kalmanState_s {
 
 void kalmanGetState(kalmanState_t *buf);
 
+void printP();
+
 #endif

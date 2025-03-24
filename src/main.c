@@ -12,22 +12,26 @@
 #include "encoder/encoder.h"
 #include "servo.h"
 #include "lidar.h"
-
+#include "constants.h"
 
 
 
 void printKalmanState(TimerHandle_t xTimer) {
-    // imuData_t imu;
-    // imuGetData(&imu);
-    // printf("%10lluus\t% 7.4fm/s^2x\t% 7.4fm/s^2y\t% 7.4fm/s^2z\t% 7.4frad/sx\t% 7.4frad/sy\t% 7.4frad/sz\n", imu.micros, imu.Ax, imu.Ay, imu.Az, imu.Gx, imu.Gy, imu.Gz);
+    imuData_t imu;
+    imuGetData(&imu);
+    // float degGx = 180.0 / M_PI * imu.Gx;
+    // float degGy = 180.0 / M_PI * imu.Gy;
+    // float degGz = 180.0 / M_PI * imu.Gz;
+    // printf("%10lluus\t% 7.4fm/s^2x\t% 7.4fm/s^2y\t% 7.4fm/s^2z\t% 7.2fdeg/sx\t% 7.2fdeg/sy\t% 7.2fdeg/sz\n", imu.micros, imu.Ax, imu.Ay, imu.Az, degGx, degGy, degGz);
 
     kalmanState_t s;
     kalmanGetState(&s);
-    float degBeta = M_PI / 180.0 * s.beta;
-    float degVBeta = M_PI / 180.0 * s.vbeta;
-    float degGamma = M_PI / 180.0 * s.gamma;
-    float degVGamma = M_PI / 180.0 * s.vgamma;
-    printf("Z:% 7.3f\tvZ:% 7.3f\tX:% 7.3f\tvX:% 7.3f\tBeta:% 7.3f\tvBeta:% 7.3f\tGamma:% 7.3f\tvGamma:% 7.3f\n", s.z, s.vz, s.x, s.vx, degBeta, degVBeta, degGamma, degVGamma);
+    float degBeta = 180.0 / M_PI * s.beta;
+    float degVBeta = 180.0 / M_PI * s.vbeta;
+    float degGamma = 180.0 / M_PI * s.gamma;
+    float degVGamma = 180.0 / M_PI * s.vgamma;
+    printf("Z:% 7.3f\tvZ:% 7.3f\taZ:% 7.3f\tX:% 7.3f\tvX:% 7.3f\taX:% 7.3f\tBeta:% 7.3f\tvBeta:% 7.3f\tGamma:% 7.3f\tvGamma:% 7.3f\n", s.z, s.vz, -(imu.Az-GRAVITY), s.x, s.vx, -imu.Ax, degBeta, degVBeta, degGamma, degVGamma);
+    //printP();
 }
 
 
@@ -57,7 +61,7 @@ int main()
     
 
     static StaticTimer_t timerBuffer;
-    TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", pdMS_TO_TICKS(100), pdTRUE, NULL, printKalmanState, &timerBuffer);
+    TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", pdMS_TO_TICKS(200), pdTRUE, NULL, printKalmanState, &timerBuffer);
     xTimerStart(printTimer, portMAX_DELAY);
 
     vTaskStartScheduler();
