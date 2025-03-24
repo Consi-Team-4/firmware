@@ -3,9 +3,9 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "task.h"
-#include "encoder/simple_encoder_substep.h"
-#include "simple_encoder_substep.pio.h"
-#include "simple_encoder_substep.c"
+//#include "encoder/simple_encoder_substep.h"
+//#include "simple_encoder_substep.pio.h"
+//#include "simple_encoder_substep.c"
 #include "servo.h"
 #include "pid.h"
 #include "hardware/timer.h"
@@ -163,8 +163,7 @@ void pidSetup() {
     //vTaskDelay(pdMS_TO_TICKS(3000));
     printf("testing2 \n");
     
-    substep_state_t state;
-    substep_set_calibration_data(&state, 128);
+    
     printf("testing2 \n");
     // Create PID task
     pidTask = xTaskCreateStatic(
@@ -180,6 +179,7 @@ void pidSetup() {
 }
 
 void pidTaskFunc(void *pvParameters) {
+    /** 
     substep_state_t state;
     
     printf("testing4 \n");
@@ -194,7 +194,7 @@ void pidTaskFunc(void *pvParameters) {
     substep_init_state(pio, sm, PIN_A, &state);
     uint last_position = 0, last_raw_step = 0;
     int last_speed = 0;
-
+    */
     while (true) {
         //const uint PIN_A = 25;
         
@@ -202,6 +202,7 @@ void pidTaskFunc(void *pvParameters) {
         pwm_set_enabled(slice_num, true); 
         pwm_set_gpio_level(ESC_PIN, 1600);
         
+        /**
         
         substep_update(&state);
         //printf("testing5 \n");
@@ -212,9 +213,11 @@ void pidTaskFunc(void *pvParameters) {
             last_raw_step = state.raw_step;
             //printf("testing6 \n");
         }
+            
         sleep_ms(10);
         // PID calculations
         double frequency_c = state.speed;
+        */
         double frequency_d = setpoint; // Use setpoint instead of function call for simplicity
         double pwm_output = pid_controller(frequency_d, frequency_c);
 

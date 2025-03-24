@@ -41,6 +41,7 @@ int main()
 
 int main() {
     stdio_init_all();  // Initialize USB serial
+    float position, speed;
 
     // Wait for the serial connection to be ready (optional)
     uint32_t start_ms = to_ms_since_boot(get_absolute_time());
