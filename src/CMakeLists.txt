@@ -3,6 +3,7 @@ add_executable(${ProjectName}
     encoder/simple_encoder_substep.c
     imu/imu.c
     lidar/lidar.c
+    bluetooth.c
     debug.c
     freeRTOSHelpers.c
     kalman.cpp
