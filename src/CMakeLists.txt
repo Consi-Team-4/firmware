@@ -4,11 +4,11 @@ add_executable(${ProjectName}
 
     # Controllers
     controllers/esc.c
-    controllers/encoder.c
     controllers/servo.c
-    controllers/simple_encoder_substep.c
 
     # Sensors
+    sensors/encoder.c
+    sensors/simple_encoder_substep.c
     sensors/imu.c
     sensors/lidar.c
 
@@ -25,7 +25,7 @@ add_executable(${ProjectName}
 
 # PIO header generation (adjust if you're using more .pio files)
 pico_generate_pio_header(${ProjectName}
-    ${CMAKE_CURRENT_LIST_DIR}/controllers/simple_encoder_substep.pio
+    ${CMAKE_CURRENT_LIST_DIR}/sensors/simple_encoder_substep.pio
 )
 
 # Include directories

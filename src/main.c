@@ -10,6 +10,8 @@
 // === Local Modules ===
 #include "controllers/esc.h"
 #include "tasks/heartbeat.h"
+#include "sensors/encoder.h"
+
 
 // === Main ===
 int main() {
@@ -25,7 +27,12 @@ int main() {
 
     printf("Start ==========================================================================\n");
 
+
+    encoderSetup();
+    escSetup(); 
+
     // Start Heartbeat Task (prints dummy data)
+    /**/
     xTaskCreate(
         statusHeartbeatTask,
         "StatusHeartbeat",
@@ -34,8 +41,6 @@ int main() {
         1,         // Priority
         NULL       // Task handle (optional)
     );
-
-    escSetup(); 
 
     // Start FreeRTOS Scheduler
     vTaskStartScheduler();

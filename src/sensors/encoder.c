@@ -8,13 +8,13 @@
 #include "simple_encoder_substep.h"
 
 
-# define METERS_PER_SUBSTEP 20 // Insert correct value here
+# define METERS_PER_SUBSTEP 0.0000274122807018 // 36480 substeps per meter
 
 
 static substep_state_t state;
 const PIO pio = pio0;
 const uint sm = 0;
-const uint ENCODER_PIN = 28; // Pin A2
+const uint ENCODER_PIN = 5; // Pin D10
 
 static uint64_t prevReadIrqMicros;
 
@@ -32,7 +32,7 @@ void encoderSetup() {
     encoderMutex = xSemaphoreCreateMutexStatic(&encoderMutexBuffer);
 }
 
-void encoderRead(float *position, float *speed) {
+void encoderRead(float *position, float *speed, uint32_t *raw_speed) {
     // Will cause problems if read more frequently than once every 13 cpu cycles ~= 0.1us
     // This ensures that we don't run into issues (need 2 us because worst case rounds down, doesn't matter since it's still incredibly small)
     xSemaphoreTake(encoderMutex, portMAX_DELAY);
@@ -47,9 +47,11 @@ void encoderRead(float *position, float *speed) {
 
         *position = cachedPosition;
         *speed = cachedSpeed;
+        *raw_speed = state.speed_2_20;
     } else { // Use cached values
         *position = cachedPosition;
         *speed = cachedSpeed;
+        *raw_speed = state.speed_2_20;
     }
     xSemaphoreGive(encoderMutex);
     // Check if we're trying to read again too soon. If so, use cached results
