@@ -8,6 +8,7 @@
 #include "pico/stdlib.h"
 
 // === Local Modules ===
+#include "controllers/esc.h"
 #include "tasks/heartbeat.h"
 
 // === Main ===
@@ -33,6 +34,8 @@ int main() {
         1,         // Priority
         NULL       // Task handle (optional)
     );
+
+    escSetup(); 
 
     // Start FreeRTOS Scheduler
     vTaskStartScheduler();

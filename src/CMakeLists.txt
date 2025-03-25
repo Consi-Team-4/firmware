@@ -3,6 +3,7 @@ add_executable(${ProjectName}
     main.c
 
     # Controllers
+    controllers/esc.c
     controllers/encoder.c
     controllers/servo.c
     controllers/simple_encoder_substep.c
