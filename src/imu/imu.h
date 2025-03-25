@@ -18,7 +18,7 @@ typedef struct imuData_s {
     float Az;
 } imuData_t;
 
-void imuSetup(TaskHandle_t taskToNotify);
+void imuSetup();
 
 // Only call from within a task
 void imuGetData(imuData_t *buf);

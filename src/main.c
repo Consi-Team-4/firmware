@@ -7,7 +7,6 @@
 
 #include "pico/stdlib.h"
 
-#include "kalman.h"
 #include "imu/imu.h"
 #include "encoder/encoder.h"
 #include "servo.h"
@@ -35,7 +34,7 @@
 //     //printP();
 // }
 
-
+const uint start_button = 16;
 
 int main()
 {
@@ -43,7 +42,7 @@ int main()
     // Wait a few seconds before doing anything so that the serial monitor has time to load.
     // Otherwise I can't see what happens during the setup to debug :(
     uint32_t start_ms = to_ms_since_boot(get_absolute_time());
-    while (to_ms_since_boot(get_absolute_time()) < start_ms+1000) {
+    while (to_ms_since_boot(get_absolute_time()) < start_ms+3000) {
         printf("Waiting...\n");
         sleep_ms(50);
     }
@@ -58,13 +57,24 @@ int main()
 
     // printf("Setup complete!\n");
 
-    // static StaticTimer_t timerBuffer;
-    // TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", pdMS_TO_TICKS(200), pdTRUE, NULL, printKalmanState, &timerBuffer);
-    // xTimerStart(printTimer, portMAX_DELAY);
+    
 
     
-    bluetoothSetup();
-    
-    // Start the scheduler
+    imuSetup();
+    servoSetup();
+    encoderSetup();
+
+    gpio_init(start_button);
+    gpio_set_dir(start_button, false);
+    gpio_pull_up(start_button);
+    sleep_ms(10);
+
+    while(gpio_get(start_button)) {
+        sleep_ms(50);
+        printf("Waiting for start button.\n");
+        sleep_ms(50);
+        printf("Waiting for start button...\n");
+    }
+
     vTaskStartScheduler();
 }

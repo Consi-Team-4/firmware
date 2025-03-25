@@ -50,9 +50,6 @@ static StaticSemaphore_t imuDataMutexBuffer;
 static SemaphoreHandle_t imuDataMutex;
 
 
-// Task to notify when IMU data is ready
-static TaskHandle_t imuTaskToNotify;
-
 
 // Forward declaring internal functions
 
@@ -68,9 +65,7 @@ static void imuTaskFunc(void *);
 
 
 
-void imuSetup(TaskHandle_t taskToNotify) {
-    imuTaskToNotify = taskToNotify;
-
+void imuSetup() {
     printf("Setting up SDK I2C...\n");
 
     i2c_init(I2C_INST, 400*1000);
@@ -271,8 +266,5 @@ static void imuTaskFunc(void *) {
             xSemaphoreGive(imuDataMutex);
         }
 
-        // printf("%10lluus\tT:% 6u\tGx:% 6d\tGy:% 6d\tGz:% 6d\tAx:% 6d\tAy:% 6d\tAz:% 6d\n", imuData.micros, data[0], data[1], data[2], data[3], data[4], data[5], data[6]);
-
-        xTaskNotifyGive(imuTaskToNotify);
     }
 }

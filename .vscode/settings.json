@@ -65,6 +65,7 @@
         "math.h": "c",
         "encoder.h": "c",
         "irq.h": "c",
-        "imu.h": "c"
+        "imu.h": "c",
+        "random": "c"
     }
 }
