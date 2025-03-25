@@ -10,14 +10,16 @@
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/common/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/rp2_common/**",
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/rp2040/**",
-                "${workspaceFolder}/src/**"
-
+                "${workspaceFolder}/src/**",
+                "${workspaceFolder}/build/generated/pico_base"
             ],
             "forcedInclude": [
                 "${userHome}/.pico-sdk/sdk/2.1.1/src/common/pico_base_headers/include/pico.h",
                 "${workspaceFolder}/build/generated/pico_base/pico/config_autogen.h"
             ],
-            "defines": ["_DEFAULT_SOURCE"],
+            "defines": [
+                "_DEFAULT_SOURCE"
+            ],
             "compilerPath": "${userHome}/.pico-sdk/toolchain/14_2_Rel1/bin/arm-none-eabi-gcc.exe",
             "cStandard": "c17",
             "cppStandard": "c++14",
