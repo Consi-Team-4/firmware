@@ -217,10 +217,10 @@ void pidTaskFunc(void *pvParameters) {
         sleep_ms(10);
         // PID calculations
         double frequency_c = state.speed;
-        */
+        
         double frequency_d = setpoint; // Use setpoint instead of function call for simplicity
         double pwm_output = pid_controller(frequency_d, frequency_c);
-
+        */
         //set_esc_speed(pwm_output);
         vTaskDelay(pdMS_TO_TICKS(100));
     }
