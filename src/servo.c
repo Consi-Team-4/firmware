@@ -41,12 +41,12 @@ void servoSetup()
     {
         gpio_set_function(servo_pins[i], GPIO_FUNC_PWM);
         uint slice_num = pwm_gpio_to_slice_num(servo_pins[i]);
-        pwm_set_clkdiv(slice_num, 125.0);  // Set clock to 1MHz
-        pwm_set_wrap(slice_num, 5 * 1000); // 5ms period - Servos normally use 20ms period, but faster frequency means lower latency
+        pwm_set_clkdiv(slice_num, 125.0);   // Set clock to 1MHz
+        pwm_set_wrap(slice_num, 10 * 1000); // 10ms period - Servos normally use 20ms period, but faster frequency means lower latency
 
         pwm_set_gpio_level(servo_pins[i], (1500)); // Servo to the middle
         pwm_set_enabled(slice_num, true);
-        sleep_ms(100);
+        sleep_ms(1000);
     }
     servoTask = xTaskCreateStatic(servoTaskFunc, "servoTask", sizeof(servoStackBuffer) / sizeof(StackType_t), NULL, 3, servoStackBuffer, &servoTaskBuffer);
 }
@@ -133,13 +133,18 @@ void servoTaskFunc(void *)
         // setServo3(0);
         // setServo4(0);
         setServo1(2500);
-        vTaskDelay(500);
+        printf("1\n");
+        printf("%d", pdMS_TO_TICKS(50));
+        vTaskDelay(pdMS_TO_TICKS(50));
         setServo2(2500);
-        vTaskDelay(500);
+        printf("2\n");
+        vTaskDelay(pdMS_TO_TICKS(50));
         setServo3(2500);
-        vTaskDelay(500);
+        printf("3\n");
+        vTaskDelay(pdMS_TO_TICKS(50));
         setServo4(2500);
-        vTaskDelay(500);
+        printf("4\n");
+        vTaskDelay(pdMS_TO_TICKS(50));
 
         // setServo1()
         // pwm_set_gpio_level(SERVO_PIN_1, (1000));
