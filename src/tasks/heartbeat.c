@@ -41,3 +41,14 @@ void statusHeartbeatTask(void *pvParameters) {
         vTaskDelay(xDelay);
     }
 } 
+
+void hearbeat_init() {
+    xTaskCreate(
+        statusHeartbeatTask,
+        "StatusHeartbeat",
+        1024,      // Stack size in words (not bytes)
+        NULL,      // Task parameter
+        1,         // Priority
+        NULL       // Task handle (optional)
+    );
+}

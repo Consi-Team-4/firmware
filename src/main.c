@@ -30,18 +30,7 @@ int main() {
 
     encoderSetup();
     escSetup(); 
-
-    // Start Heartbeat Task (prints dummy data)
-    /**/
-    xTaskCreate(
-        statusHeartbeatTask,
-        "StatusHeartbeat",
-        1024,      // Stack size in words (not bytes)
-        NULL,      // Task parameter
-        1,         // Priority
-        NULL       // Task handle (optional)
-    );
-
+    hearbeat_init();
     // Start FreeRTOS Scheduler
     vTaskStartScheduler();
 
