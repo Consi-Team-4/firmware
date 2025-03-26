@@ -43,7 +43,7 @@ int main()
     // imuSetup(kalmanTask);
     // encoderSetup();
     servoSetup();
-    // lidarSetup();
+    lidarSetup();
 
     static StaticTimer_t timerBuffer;
     TimerHandle_t printTimer = xTimerCreateStatic("kalmanRead", 10, pdTRUE, NULL, printKalmanState, &timerBuffer);

@@ -61,7 +61,7 @@ void delay(int milliseconds)
 
 void setServo1(int change) // front right
 {
-    int setting = (change - 0) * (1500 - 400) / (3000 - 0);
+    int setting = (change - 0) * (2500 - 400) / (3000 - 0) + 400;
     // edit change based on servo
     pwm_set_gpio_level(SERVO_PIN_1, (setting));
 }
@@ -69,22 +69,22 @@ void setServo1(int change) // front right
 void setServo2(int change) // front left
 {
     change = 3000 - change;
-    int setting = (change - 0) * (2500 - 100) / (3000 - 0);
+    int setting = (change - 0) * (2500 - 400) / (3000 - 0) + 400;
     // edit change based on servo
     pwm_set_gpio_level(SERVO_PIN_2, (setting));
 }
 
 void setServo3(int change) // back right
 {
-    change = 3000 - change;
-    int setting = (change - 0) * (2000 - 500) / (3000 - 0);
+    // change = 3000 - change;
+    int setting = (change - 0) * (2000 - 500) / (3000 - 0) + 500;
     // edit change based on servo
     pwm_set_gpio_level(SERVO_PIN_3, (3000 - setting));
 }
 
 void setServo4(int change) // back left
 {
-    int setting = (change - 0) * (2000 - 500) / (3000 - 0);
+    int setting = (change - 0) * (2500 - 500) / (3000 - 0) + 500;
     // edit change based on servo
     pwm_set_gpio_level(SERVO_PIN_4, (setting));
 }
@@ -132,19 +132,18 @@ void servoTaskFunc(void *)
 
         // setServo3(0);
         // setServo4(0);
-        setServo1(2500);
-        printf("1\n");
-        printf("%d", pdMS_TO_TICKS(50));
-        vTaskDelay(pdMS_TO_TICKS(50));
-        setServo2(2500);
-        printf("2\n");
-        vTaskDelay(pdMS_TO_TICKS(50));
-        setServo3(2500);
-        printf("3\n");
-        vTaskDelay(pdMS_TO_TICKS(50));
-        setServo4(2500);
-        printf("4\n");
-        vTaskDelay(pdMS_TO_TICKS(50));
+        // setServo1(500);
+        // printf("1\n");
+        // vTaskDelay(0.5);
+        // setServo2(500);
+        // printf("2\n");
+        // vTaskDelay(0.5);
+        // setServo3(500);
+        // printf("3\n");
+        // vTaskDelay(0.5);
+        // setServo4(500);
+        // printf("4\n");
+        // vTaskDelay(0.5);
 
         // setServo1()
         // pwm_set_gpio_level(SERVO_PIN_1, (1000));

@@ -166,6 +166,7 @@ double calculate_queue_variance(Queue *q, int size, int numItems)
 void lidarSetup()
 {
 
+    printf("lidar setup start\n");
     // Set up queue for lidar distance data
     initQueue(&q_0);
     sleep_ms(100);
@@ -175,37 +176,59 @@ void lidarSetup()
     uart_init(uart0, 115200);
     gpio_set_function(16, UART_FUNCSEL_NUM(uart0, 16)); // GPIO16/D4 is Uart TX
     gpio_set_function(17, UART_FUNCSEL_NUM(uart0, 17)); // GPIO17/D5 is Uart RX
+
+    sleep_ms(100);
+
     // Set uart settings
     uart_set_hw_flow(uart0, false, false);          // No CTS or RTS
     uart_set_format(uart0, 8, 1, UART_PARITY_NONE); // 8 data bits, 1 stop bit, no parity bit
     uart_set_fifo_enabled(uart0, false);            // No FIFO - want interrupt to trigger as soon as we get a character
 
+    sleep_ms(100);
+
     // Set up interrupt
     irq_set_exclusive_handler(UART0_IRQ, uart0RxISR);
     irq_set_enabled(UART0_IRQ, true);
+
+    sleep_ms(100);
 
     uart_set_irq_enables(uart0, true, false); // Trigger interrupt when it receives data
 
     lidar0Index = 0; // Reset
 
+    sleep_ms(100);
+
+
     //  **** second lidar ****
     uart_init(uart1, 115200);
     gpio_set_function(18, UART_FUNCSEL_NUM(uart1, 18)); // GPIO18/D6 is Uart TX
     gpio_set_function(19, UART_FUNCSEL_NUM(uart1, 19)); // GPIO19/D7 is Uart RX
+
+    sleep_ms(100);
+
     // Set uart settings
     uart_set_hw_flow(uart1, false, false);          // No CTS or RTS
     uart_set_format(uart1, 8, 1, UART_PARITY_NONE); // 8 data bits, 1 stop bit, no parity bit
     uart_set_fifo_enabled(uart1, false);            // No FIFO - want interrupt to trigger as soon as we get a character
 
+    sleep_ms(100);
+
     // Set up interrupt
     irq_set_exclusive_handler(UART1_IRQ, uart1RxISR);
     irq_set_enabled(UART1_IRQ, true);
+
+    sleep_ms(100);
 
     uart_set_irq_enables(uart1, true, false); // Trigger interrupt when it receives data
 
     lidar1Index = 0; // Reset
 
+    sleep_ms(100);
+
     lidarTask = xTaskCreateStatic(lidarTaskFunc, "lidarTask", sizeof(lidarStackBuffer) / sizeof(StackType_t), NULL, 4, lidarStackBuffer, &lidarTaskBuffer);
+    printf("lidar setup complete\n");
+
+    sleep_ms(1000);
 }
 
 static void uart0RxISR(void)
@@ -291,11 +314,13 @@ int mapDistanceToAngle(int distance)
 
 static void lidarTaskFunc(void *)
 {
+    printf("got to task\n");
     // Wait for notification from ISR
     while (true)
     {
-        if (ulTaskNotifyTake(true, portMAX_DELAY))
-        {
+        // if (ulTaskNotifyTake(true, portMAX_DELAY))
+        // {
+            printf("got inside the if\n");
             // For now, just printing values
             uint16_t distance0 = ((uint16_t *)lidar0Buffer)[1];
             uint16_t strength0 = ((uint16_t *)lidar0Buffer)[2];
@@ -318,14 +343,14 @@ static void lidarTaskFunc(void *)
             {
                 double delta = mapDistanceToAngle(distance0); // value to hold amount that the servo should move
                                                               // calculate servo distance, set delta to this amt
-                adjustServoPosition(delta, distance0);        // call servo function, pass in servo setting
+                // adjustServoPosition(delta, distance0);        // call servo function, pass in servo setting
             }
 
             if (variance0 > tolerance || variance1 > tolerance)
             {
                 double delta = mapDistanceToAngle(distance1); // value to hold amount that the servo should move
                                                               // calculate servo distance, set delta to this amt
-                adjustServoPosition(delta, distance1);        // call servo function, pass in servo setting
+                // adjustServoPosition(delta, distance1);        // call servo function, pass in servo setting
             }
 
             // Reset
@@ -342,6 +367,6 @@ static void lidarTaskFunc(void *)
                 uart_getc(uart1);
             } // Empty queue to clear old data
             irq_set_enabled(UART1_IRQ, true);
-        }
+        // }
     }
 }
