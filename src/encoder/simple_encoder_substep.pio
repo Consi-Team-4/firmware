@@ -145,7 +145,7 @@ static inline void simple_encoder_substep_program_init(PIO pio, uint sm, uint pi
 	// also set the Y (current step) so that the lowest bit of Y has a 1:1
 	// mapping to the current phase (input pin state). That simplifies the code
 	// to compensate for differences in encoder phase sizes:
-	// pio_sm_exec(pio, sm, pio_encode_set(pio_y, pin_state)); No need to do since just did
+	// pio_sm_exec(pio, sm, pio_encode_set(pio_y, pin_state)); //No need to do since just did
 
 	pio_sm_set_enabled(pio, sm, true);
 	

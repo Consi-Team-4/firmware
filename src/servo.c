@@ -81,7 +81,7 @@ void feedback(TimerHandle_t xTimer) {
 
     static uint8_t count;
     if (count == 0) {
-        printf("Speed: %f\tRawSpeed: %u", speed, raw_speed);
+        printf("Speed: %f\tRawSpeed: %u\n", speed, raw_speed);
     }
     if (count==100){count=0;}
     else {count++;}

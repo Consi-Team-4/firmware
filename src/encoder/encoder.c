@@ -9,6 +9,7 @@
 
 
 # define METERS_PER_SUBSTEP 0.0000274122807018 // 36480 substeps per meter
+# define PHASE_0_SIZE 154
 
 
 static substep_state_t state;
@@ -26,9 +27,9 @@ static float cachedSpeed;
 
 void encoderSetup() {
     pio_add_program(pio, &simple_encoder_substep_program);
-    substep_init_state(pio, sm, ENCODER_PIN, &state); // Pin A2
-    state.idle_stop_samples = 10;
-
+    substep_init_state(pio, sm, ENCODER_PIN, &state);
+    state.idle_stop_samples = 1000;
+    substep_set_calibration_data(state, PHASE_0_SIZE);
     encoderMutex = xSemaphoreCreateMutexStatic(&encoderMutexBuffer);
 }
 
