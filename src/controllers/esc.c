@@ -58,18 +58,21 @@ void escSetup() {
         serialStackBuffer,
         &serialTaskBuffer
     );
+
+    //setEscTaskFunc(1660);  // Start with 1660us PWM
 }
 
-/*
-void escTaskFunc(void *) {
-    while (true) {
-        pwm_set_gpio_level(ESC_PIN, 1700);
-        sleep_ms(3000);
-        vTaskDelay(4);
+void setEscTaskFunc(uint pwm_us) {
+    if (pwm_us < 0 || pwm_us > 3000) {
+        printf("ESC PWM out of range: %d\n", pwm_us);
+        return;
     }
-    
+
+    #define PWM_PERIOD_US 20000  // 20ms
+    uint pwm_level = (uint)((pwm_us / (float)PWM_PERIOD_US) * 39062);
+    pwm_set_gpio_level(ESC_PIN, pwm_level);
+    printf("[ESC] Set PWM to %d us (%d level)\n", pwm_us, pwm_level);
 }
-*/
 
 void serialCommandTaskFunc(void *params) {
     char input[32];

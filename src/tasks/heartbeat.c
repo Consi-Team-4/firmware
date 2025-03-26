@@ -26,13 +26,14 @@ void statusHeartbeatTask(void *pvParameters) {
         encoderRead(&encoderPos, &encoderSpeed, &encoderRaw);
 
         printf(
-            "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",
+            "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f Raw=%lu | Servo=%.2f | Lidar=%.2f\n",
             count++,
             dummyIMU_Ax,
             dummyIMU_Ay,
             dummyIMU_Az,
             encoderPos,
             encoderSpeed,
+            encoderRaw,
             dummyServoPos,
             dummyLidarDist
         );
