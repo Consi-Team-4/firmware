@@ -11,6 +11,7 @@
 #include "controllers/esc.h"
 #include "tasks/heartbeat.h"
 #include "sensors/encoder.h"
+#include "controllers/servo.h"
 
 
 // === Main ===
@@ -28,10 +29,11 @@ int main() {
     printf("Start ==========================================================================\n");
 
 
-    encoderSetup();
-    escSetup(); 
-    hearbeat_init();
-    // Start FreeRTOS Scheduler
+    //encoderSetup();
+    //escSetup(); starts cli for setting esc speeds
+    //hearbeat_init();
+    //servoSetup(); starts cli for setting servo positions
+    //Start FreeRTOS Scheduler
     vTaskStartScheduler();
 
     // Should never hit here
