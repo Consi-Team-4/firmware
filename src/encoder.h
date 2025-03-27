@@ -6,6 +6,8 @@
 void encoderSetup();
 
 // Only call from within a task
-void encoderRead(float *position, float *speed, uint32_t *raw_speed);
+void encoderRead(float *position, float *speed);
+
+void encoderReadDebug(uint32_t *position, uint32_t *speed_2_20);
 
 #endif
