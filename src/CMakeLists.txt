@@ -3,38 +3,34 @@ add_executable(${ProjectName}
     main.c
 
     # Controllers
-    controllers/esc.c
-    controllers/servo.c
+    esc.c
+    servo.c
 
     # Sensors
-    sensors/encoder.c
-    sensors/simple_encoder_substep.c
-    sensors/imu.c
-    sensors/lidar.c
+    encoder.c
+    simple_encoder_substep.c
+    imu.c
+    lidar.c
 
     # Tasks: Active components
-    tasks/heartbeat.c
+    heartbeat.c
 
 
     # Utilities: Passive helper functions 
-    utils/log.c
-    utils/debug.c
-    utils/freeRTOSHelpers.c
-    utils/kalman.cpp
+    log.c
+    debug.c
+    freeRTOSHelpers.c
+    kalman.cpp
 )
 
 # PIO header generation (adjust if you're using more .pio files)
 pico_generate_pio_header(${ProjectName}
-    ${CMAKE_CURRENT_LIST_DIR}/sensors/simple_encoder_substep.pio
+    ${CMAKE_CURRENT_LIST_DIR}/simple_encoder_substep.pio
 )
 
 # Include directories
 target_include_directories(${ProjectName} PRIVATE
     ${CMAKE_CURRENT_LIST_DIR}
-    ${CMAKE_CURRENT_LIST_DIR}/controllers
-    ${CMAKE_CURRENT_LIST_DIR}/sensors
-    ${CMAKE_CURRENT_LIST_DIR}/tasks
-    ${CMAKE_CURRENT_LIST_DIR}/utils
 )
 
 # Linked libraries

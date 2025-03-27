@@ -8,10 +8,10 @@
 #include "pico/stdlib.h"
 
 // === Local Modules ===
-#include "controllers/esc.h"
-#include "tasks/heartbeat.h"
-#include "sensors/encoder.h"
-#include "controllers/servo.h"
+#include "esc.h"
+#include "heartbeat.h"
+#include "encoder.h"
+#include "servo.h"
 
 
 // === Main ===
