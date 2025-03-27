@@ -34,7 +34,7 @@
 //     //printP();
 // }
 
-const uint start_button = 16;
+const uint start_button = 18;
 
 int main()
 {

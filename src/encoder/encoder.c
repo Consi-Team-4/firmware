@@ -29,7 +29,7 @@ void encoderSetup() {
     pio_add_program(pio, &simple_encoder_substep_program);
     substep_init_state(pio, sm, ENCODER_PIN, &state);
     state.idle_stop_samples = 1000;
-    substep_set_calibration_data(state, PHASE_0_SIZE);
+    substep_set_calibration_data(&state, PHASE_0_SIZE);
     encoderMutex = xSemaphoreCreateMutexStatic(&encoderMutexBuffer);
 }
 
