@@ -1,32 +1,28 @@
 #include "log.h"
-#include "pico/stdio.h" // Or any output function you're using
+#include <stdarg.h>
+#include "pico/stdlib.h"
+#include "FreeRTOS.h"
+#include "task.h"
+#include <stdio.h>
+#include <string.h>
 
-void logInfo(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
+static const char *level_strings[] = {
+    "DEBUG", "INFO", "WARN", "ERROR"
+};
 
-    printf("[INFO] ");
-    vprintf(format, args);
-
-    va_end(args);
+void log_init(void) {
+    // Already done in stdio_init_all, but you can re-init if needed
 }
 
-void logWarn(const char *format, ...) {
+void log_printf(log_level_t level, const char *format, ...) {
+    static char buffer[256];
+
+    uint32_t timestamp = to_ms_since_boot(get_absolute_time());
+
     va_list args;
     va_start(args, format);
-
-    printf("[WARN] ");
-    vprintf(format, args);
-
+    vsnprintf(buffer, sizeof(buffer), format, args);
     va_end(args);
-}
 
-void logError(const char *format, ...) {
-    va_list args;
-    va_start(args, format);
-
-    printf("[ERROR] ");
-    vprintf(format, args);
-
-    va_end(args);
+    printf("[%lu ms] [%s] %s\n", timestamp, level_strings[level], buffer);
 }

@@ -12,6 +12,7 @@
 #include "heartbeat.h"
 #include "encoder.h"
 #include "servo.h"
+#include "log.h"
 
 
 // === Main ===
@@ -29,10 +30,16 @@ int main() {
     printf("Start ==========================================================================\n");
 
 
+    log_init();
+    log_printf(LOG_INFO, "System startup complete.");
+
     //encoderSetup();
+    servoSetup(); //starts cli for setting servo positions
+
+ 
     //escSetup(); starts cli for setting esc speeds
     //hearbeat_init();
-    //servoSetup(); starts cli for setting servo positions
+
     //Start FreeRTOS Scheduler
     vTaskStartScheduler();
 

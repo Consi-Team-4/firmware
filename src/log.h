@@ -2,13 +2,15 @@
 #define LOG_H
 
 #include <stdio.h>
-#include <stdarg.h>
 
-// Basic log function
-void logInfo(const char *format, ...);
+typedef enum {
+    LOG_DEBUG,
+    LOG_INFO,
+    LOG_WARN,
+    LOG_ERROR
+} log_level_t;
 
-// Optionally, for future log levels
-void logError(const char *format, ...);
-void logWarn(const char *format, ...);
+void log_init(void);
+void log_printf(log_level_t level, const char *format, ...);
 
-#endif // LOG_H
+#endif
