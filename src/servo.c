@@ -10,6 +10,7 @@
 #include "hardware/pwm.h"
 #include <math.h>
 #include "log.h"
+#include <stdlib.h> // For atoi()
 
 // === Servo GPIO Pins ===
 #define SERVO_PIN_FR 26  // Front Right
@@ -41,9 +42,9 @@ static const uint8_t SERVO_GPIO[SERVO_COUNT] = {
 
 static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_FR] = true,  // Inverted
-    [SERVO_FL] = true,  // Inverted
+    [SERVO_FL] = false,  // Inverted
     [SERVO_BR] = false,
-    [SERVO_BL] = false,
+    [SERVO_BL] = true,
 };
 
 static const char *SERVO_NAME[SERVO_COUNT] = {
@@ -59,7 +60,12 @@ static StaticTask_t servoTaskBuffer;
 static StackType_t servoStackBuffer[1000];
 TaskHandle_t servoTask;
 
+static StaticTask_t serialTaskBufferServo;
+static StackType_t serialStackBufferServo[1000];
+TaskHandle_t serialTaskServo;
+
 void servoTaskFunc(void *);
+void serialCommandTaskFuncServo(void *);
 
 void servoSetup() {
     for (int i = 0; i < SERVO_COUNT; i++) {
@@ -80,6 +86,17 @@ void servoSetup() {
         3,
         servoStackBuffer,
         &servoTaskBuffer
+    );
+
+    // Start the serial command task
+    serialTaskServo = xTaskCreateStatic(
+        serialCommandTaskFuncServo,
+        "serialTaskServo",
+        sizeof(serialStackBufferServo) / sizeof(StackType_t),
+        NULL,
+        2,
+        serialStackBufferServo,
+        &serialTaskBufferServo
     );
 }
 
@@ -147,11 +164,53 @@ void servoTest(void) {
     
 }
 
-void servoTaskFunc(void *) {
+// === Serial Command Task ===
+void serialCommandTaskFuncServo(void *params) {
+    char input[32];
 
-    //servoSetAll(500);
     while (true) {
-        //servoTest();
-        
+        int i = 0;
+        printf("Enter PWM value (500-2500) for all servos: ");
+
+        // Read input
+        while (true) {
+            int c = getchar_timeout_us(0);
+            if (c == PICO_ERROR_TIMEOUT) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
+
+            if (c == '\n' || c == '\r') {
+                input[i] = '\0';  // Null-terminate
+                break;
+            }
+
+            if (i < sizeof(input) - 1) {
+                input[i++] = (char)c;
+                putchar(c);  // Echo input
+            }
+        }
+
+        // Convert input to PWM microseconds (1000-2000)
+        int pwm_us = atoi(input);
+        printf("\nReceived PWM value: %d\n", pwm_us);
+
+        if (pwm_us < 500 || pwm_us > 2500) {
+            printf("Error: PWM value out of range! (1000-2000)\n");
+            continue;
+        }
+
+        // Update all servos
+        servoSetAll(pwm_us);
+
+        printf("Updated all servos to %d us\n", pwm_us);
+    }
+}
+
+// === Main Servo Task (Continuous Operation) ===
+void servoTaskFunc(void *) {
+    while (true) {
+        // Keep the task running, allowing external commands to update servos
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
