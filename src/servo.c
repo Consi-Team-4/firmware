@@ -148,11 +148,10 @@ void servoTest(void) {
 }
 
 void servoTaskFunc(void *) {
-    const uint testPositions[] = {1500, 500, 2500, 1500}; // Pulse widths in microseconds
-    const int delayMs = 500;  // Delay between position changes
 
-    
+    //servoSetAll(500);
     while (true) {
-        servoTest();
+        //servoTest();
+        
     }
 }
