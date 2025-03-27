@@ -5,6 +5,7 @@
 #include "pico/stdlib.h"
 #include "hardware/uart.h"
 #include "hardware/irq.h"
+#include "servo.h"
 
 #define LIDAR_UART      uart0
 #define LIDAR_TX_PIN    16
@@ -89,6 +90,12 @@ static void lidarTaskFunc(void *) {
             log_printf(LOG_WARN, "LIDAR returned invalid or weak signal (Dist=%u, Strength=%u)", dist_cm, strength);
         } else {
             log_printf(LOG_INFO, "LIDAR: %3d cm | Strength: %5u | Temp: %.2f°C", dist_cm, strength, temp_c);
+        }
+
+        if (dist_cm < 10) {
+            servoSetAll(500);
+        } else if (dist_cm < 20) {
+            servoSetAll(1000);
         }
     }
 }
