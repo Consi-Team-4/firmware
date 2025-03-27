@@ -10,6 +10,7 @@
 #include "hardware/pwm.h"
 #include <math.h>
 #include "log.h"
+#include <stdlib.h> // For atoi()
 
 // === Servo GPIO Pins ===
 #define SERVO_PIN_FR 26  // Front Right
@@ -53,14 +54,20 @@ static const char *SERVO_NAME[SERVO_COUNT] = {
     [SERVO_BL] = "Back Left"
 };
 
-
-// === RTOS Task ===
+// === RTOS Task Handles ===
 static StaticTask_t servoTaskBuffer;
 static StackType_t servoStackBuffer[1000];
 TaskHandle_t servoTask;
 
-void servoTaskFunc(void *);
+static StaticTask_t serialTaskBuffer;
+static StackType_t serialStackBuffer[1000];
+TaskHandle_t serialTaskServo;
 
+// Function prototypes
+void servoTaskFunc(void *);
+void serialCommandTaskFuncServo(void *);
+
+// === Servo Setup ===
 void servoSetup() {
     for (int i = 0; i < SERVO_COUNT; i++) {
         uint gpio = SERVO_GPIO[i];
@@ -68,10 +75,11 @@ void servoSetup() {
         uint slice = pwm_gpio_to_slice_num(gpio);
         pwm_set_clkdiv(slice, PWM_CLKDIV);
         pwm_set_wrap(slice, PWM_WRAP);
-        pwm_set_gpio_level(gpio, 1500); // Center
+        pwm_set_gpio_level(gpio, 1500); // Center position
         pwm_set_enabled(slice, true);
     }
 
+    // Start the servo control task
     servoTask = xTaskCreateStatic(
         servoTaskFunc,
         "servoTask",
@@ -81,13 +89,24 @@ void servoSetup() {
         servoStackBuffer,
         &servoTaskBuffer
     );
+
+    // Start the serial command task
+    serialTaskServo = xTaskCreateStatic(
+        serialCommandTaskFuncServo,
+        "serialTaskServo",
+        sizeof(serialStackBuffer) / sizeof(StackType_t),
+        NULL,
+        2,
+        serialStackBuffer,
+        &serialTaskBuffer
+    );
 }
 
+// === Servo Control Functions ===
 void servoSetRaw(uint gpio, uint us) {
-    if (us < 500) us = 500;
-    if (us > 2500) us = 2500;
+    if (us < 1000) us = 1000;
+    if (us > 2000) us = 2000;
     pwm_set_gpio_level(gpio, us);
-    //log_printf(LOG_DEBUG, "Servo on GPIO %d set to %dus", gpio, us);
 }
 
 void servoSetByID(ServoID id, uint us) {
@@ -118,40 +137,53 @@ void servoSetAll(uint us) {
     }
 }
 
-// Test routine: For each servo, move it through a full range of motion
-// 1. Center (1500us)
-// 2. Sweep to minimum (500us)
-// 3. Sweep to maximum (2500us)
-// 4. Return to center
-// Includes logging and delays for observation
-void servoTest(void) {
-    const uint testPositions[] = {1500, 500, 2500, 1500};
-    const int delayMs = 500;
+// === Serial Command Task ===
+void serialCommandTaskFuncServo(void *params) {
+    char input[32];
 
-    log_printf(LOG_INFO, "Starting servo test sequence...");
+    while (true) {
+        int i = 0;
+        printf("Enter PWM value (1000-2000) for all servos: ");
 
+        // Read input
+        while (true) {
+            int c = getchar_timeout_us(0);
+            if (c == PICO_ERROR_TIMEOUT) {
+                vTaskDelay(pdMS_TO_TICKS(10));
+                continue;
+            }
 
-    for (ServoID id = 0; id < SERVO_COUNT; id++) {
-        log_printf(LOG_INFO, "Testing %s (GPIO %d)", SERVO_NAME[id], SERVO_GPIO[id]);
+            if (c == '\n' || c == '\r') {
+                input[i] = '\0';  // Null-terminate
+                break;
+            }
 
-        for (int i = 0; i < sizeof(testPositions) / sizeof(testPositions[0]); i++) {
-            servoSetByID(id, testPositions[i]);
-            vTaskDelay(pdMS_TO_TICKS(delayMs));
+            if (i < sizeof(input) - 1) {
+                input[i++] = (char)c;
+                putchar(c);  // Echo input
+            }
         }
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
-    }
+        // Convert input to PWM microseconds (1000-2000)
+        int pwm_us = atoi(input);
+        printf("\nReceived PWM value: %d\n", pwm_us);
 
-    log_printf(LOG_INFO, "Servo test loop complete.");
-    vTaskDelay(pdMS_TO_TICKS(2000));
-    
+        // if (pwm_us < 1000 || pwm_us > 2000) {
+        //     printf("Error: PWM value out of range! (1000-2000)\n");
+        //     continue;
+        // }
+
+        // Update all servos
+        servoSetAll(pwm_us);
+
+        printf("Updated all servos to %d us\n", pwm_us);
+    }
 }
 
+// === Main Servo Task (Continuous Operation) ===
 void servoTaskFunc(void *) {
-
-    //servoSetAll(500);
     while (true) {
-        //servoTest();
-        
+        // Keep the task running, allowing external commands to update servos
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
 }
