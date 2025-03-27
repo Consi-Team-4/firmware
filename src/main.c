@@ -13,6 +13,7 @@
 #include "encoder.h"
 #include "servo.h"
 #include "log.h"
+#include "lidar.h"
 
 
 // === Main ===
@@ -33,8 +34,9 @@ int main() {
     log_init();
     log_printf(LOG_INFO, "System startup complete.");
 
+    lidarSetup();
     //encoderSetup();
-    servoSetup(); //starts cli for setting servo positions
+    //servoSetup(); //starts cli for setting servo positions
 
  
     //escSetup(); starts cli for setting esc speeds
