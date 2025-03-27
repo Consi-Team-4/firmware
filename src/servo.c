@@ -40,10 +40,10 @@ static const uint8_t SERVO_GPIO[SERVO_COUNT] = {
 };
 
 static const bool SERVO_INVERT[SERVO_COUNT] = {
-    [SERVO_FR] = true,  // Inverted
+    [SERVO_FR] = false,  
     [SERVO_FL] = true,  // Inverted
     [SERVO_BR] = false,
-    [SERVO_BL] = false,
+    [SERVO_BL] = true,  // Inverted
 };
 
 static const char *SERVO_NAME[SERVO_COUNT] = {
