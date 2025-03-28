@@ -104,8 +104,8 @@ void servoSetup() {
 
 // === Servo Control Functions ===
 void servoSetRaw(uint gpio, uint us) {
-    if (us < 1000) us = 1000;
-    if (us > 2000) us = 2000;
+    if (us < 500) us = 500;
+    if (us > 2500) us = 2500;
     pwm_set_gpio_level(gpio, us);
 }
 
