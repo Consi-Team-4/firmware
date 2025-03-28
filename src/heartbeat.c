@@ -1,9 +1,11 @@
 #include "heartbeat.h"
 #include "FreeRTOS.h"
 #include "task.h"
-#include "encoder.h"  // Include your encoder interface
 
 #include <stdio.h>
+
+#include "encoder.h"
+#include "controller.h"
 
 // Dummy data values (keep others if still using dummy values for now)
 float dummyIMU_Ax = 0.0f;
@@ -20,7 +22,7 @@ TaskHandle_t heartbeatTask;
 void heartbeatTaskFunc(void *);
 
 void heartbeatSetup() {
-    heartbeatTask = xTaskCreateStatic(heartbeatTaskFunc, "heartbeat", sizeof(heartbeatStackBuffer)/sizeof(StackType_t), NULL, 3, heartbeatStackBuffer, &heartbeatTaskBuffer);
+    heartbeatTask = xTaskCreateStatic(heartbeatTaskFunc, "heartbeat", sizeof(heartbeatStackBuffer)/sizeof(StackType_t), NULL, 2, heartbeatStackBuffer, &heartbeatTaskBuffer);
 }
 
 // Heartbeat Task Implementation
@@ -29,12 +31,14 @@ void heartbeatTaskFunc(void *) {
 
     float encoderPos, encoderSpeed;
     uint32_t encoderSteps, encoderSpeed_2_20;
+    float setpoint, integral, output;
 
     while (1) {
         encoderRead(&encoderPos, &encoderSpeed);
         encoderReadDebug(&encoderSteps, &encoderSpeed_2_20);
+        controllerInfo(&setpoint, &integral, &output);
 
-        printf("Odometer: % 7.3f, Speed: % 7.3f\n", encoderPos, encoderSpeed);
+        printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
 
         // printf(
         //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",

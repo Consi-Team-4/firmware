@@ -14,6 +14,7 @@
 #include "log.h"
 #include "lidar.h"
 #include "console.h"
+#include "controller.h"
 
 
 
@@ -41,6 +42,7 @@ int main() {
     encoderSetup();
     servoSetup();
     consoleSetup();
+    controllerSetup();
     heartbeatSetup();
 
     // Wait for red start button pin to be pressed

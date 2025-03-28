@@ -3,6 +3,7 @@ add_executable(${ProjectName}
     main.c
 
     # Controllers
+    controller.c
     servo.c
 
     # Sensors
