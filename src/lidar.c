@@ -60,7 +60,7 @@ void initializeQueue(Queue *q)
 // bool isEmpty(Queue *q) { return (q->front == q->rear); }
 
 // Function to check if the queue is full
-bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE - 1); }
+bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE); }
 
 // Function to add an element to the queue (Enqueue
 // operation)
@@ -79,11 +79,11 @@ void printQueue(Queue *q)
 {
     printf("Current Queue: ");
     int count = q->counter;
-    for (int i = count; i < MAX_QUEUE_SIZE - 1; i++)
+    for (int i = count; i < MAX_QUEUE_SIZE; i++)
     {
         printf("%d ", q->data[i]); // everything after/including the counter
     }
-    for (int i = 0; i < q->counter; i++)
+    for (int i = 0; i < count; i++)
     {
         printf("%d ", q->data[i]); // everything before the counter
     }
@@ -121,9 +121,11 @@ double calculate_queue_variance(Queue *q)
     int min = 1000;
     for (int i = 0; i < MAX_QUEUE_SIZE; i++)
     {
+        // printf("data: %d\n", q->data[i]);
         if (q->data[i] < min)
         {
             min = q->data[i];
+            printf("new min: %d\n", min);
         }
         if (q->data[i] > max)
         {
