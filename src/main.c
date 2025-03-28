@@ -16,12 +16,11 @@
 #include "console.h"
 #include "controller.h"
 
-
-
 const uint startButtonPin = 18; // Pin D6
 
 // === Main ===
-int main() {
+int main()
+{
     // Initialize USB Serial
     stdio_init_all();
 
@@ -34,11 +33,10 @@ int main() {
 
     // printf("Start ==========================================================================\n");
 
-
     // log_init();
     // log_printf(LOG_INFO, "System startup complete.");
 
-    //lidarSetup();
+    lidarSetup();
     encoderSetup();
     servoSetup();
     consoleSetup();
@@ -51,19 +49,21 @@ int main() {
     gpio_set_dir(startButtonPin, false);
     gpio_pull_up(startButtonPin);
     sleep_ms(10);
-    while(gpio_get(startButtonPin)) {
+    while (gpio_get(startButtonPin))
+    {
         sleep_ms(50);
         printf("Waiting for start button.\n");
         sleep_ms(50);
         printf("Waiting for start button...\n");
     }
 
-
-    //Start FreeRTOS Scheduler
+    // Start FreeRTOS Scheduler
     vTaskStartScheduler();
 
     // Should never hit here
-    while (1) { }
+    while (1)
+    {
+    }
 
     return 0;
 }
