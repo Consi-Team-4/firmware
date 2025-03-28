@@ -42,9 +42,9 @@ static const uint8_t SERVO_GPIO[SERVO_COUNT] = {
 
 static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_FR] = true,  // Inverted
-    [SERVO_FL] = true,  // Inverted
+    [SERVO_FL] = false,  // Inverted
     [SERVO_BR] = false,
-    [SERVO_BL] = false,
+    [SERVO_BL] = true,
 };
 
 static const char *SERVO_NAME[SERVO_COUNT] = {
@@ -143,7 +143,7 @@ void serialCommandTaskFuncServo(void *params) {
 
     while (true) {
         int i = 0;
-        printf("Enter PWM value (1000-2000) for all servos: ");
+        printf("Enter PWM value (500-2500) for all servos: ");
 
         // Read input
         while (true) {
@@ -168,10 +168,10 @@ void serialCommandTaskFuncServo(void *params) {
         int pwm_us = atoi(input);
         printf("\nReceived PWM value: %d\n", pwm_us);
 
-        // if (pwm_us < 1000 || pwm_us > 2000) {
-        //     printf("Error: PWM value out of range! (1000-2000)\n");
-        //     continue;
-        // }
+        if (pwm_us < 500 || pwm_us > 1500) {
+            printf("Error: PWM value out of range! (500-2500)\n");
+            continue;
+        }
 
         // Update all servos
         servoSetAll(pwm_us);

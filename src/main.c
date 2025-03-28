@@ -34,7 +34,7 @@ int main() {
     log_init();
     log_printf(LOG_INFO, "System startup complete.");
 
-    //lidarSetup();
+    lidarSetup();
     //encoderSetup();
     servoSetup(); //starts cli for setting servo positions
 
