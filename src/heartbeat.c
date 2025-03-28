@@ -12,43 +12,42 @@ float dummyIMU_Az = 9.81f;
 float dummyLidarDist = 123.4f;
 float dummyServoPos = 15.0f;
 
-// Heartbeat Task Implementation
-void statusHeartbeatTask(void *pvParameters) {
-    (void)pvParameters;
 
-    const TickType_t xDelay = pdMS_TO_TICKS(1000);  // 1 second
+static StaticTask_t heartbeatTaskBuffer;
+static StackType_t heartbeatStackBuffer[1000];
+TaskHandle_t heartbeatTask;
+
+void heartbeatTaskFunc(void *);
+
+void heartbeatSetup() {
+    heartbeatTask = xTaskCreateStatic(heartbeatTaskFunc, "heartbeat", sizeof(heartbeatStackBuffer)/sizeof(StackType_t), NULL, 3, heartbeatStackBuffer, &heartbeatTaskBuffer);
+}
+
+// Heartbeat Task Implementation
+void heartbeatTaskFunc(void *) {
     int count = 0;
 
     float encoderPos, encoderSpeed;
-    uint32_t encoderRaw;
+    uint32_t encoderSteps, encoderSpeed_2_20;
 
     while (1) {
-        encoderRead(&encoderPos, &encoderSpeed, &encoderRaw);
+        encoderRead(&encoderPos, &encoderSpeed);
+        encoderReadDebug(&encoderSteps, &encoderSpeed_2_20);
 
-        printf(
-            "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f Raw=%lu | Servo=%.2f | Lidar=%.2f\n",
-            count++,
-            dummyIMU_Ax,
-            dummyIMU_Ay,
-            dummyIMU_Az,
-            encoderPos,
-            encoderSpeed,
-            encoderRaw,
-            dummyServoPos,
-            dummyLidarDist
-        );
+        printf("Odometer: % 7.3f, Speed: % 7.3f\n", encoderPos, encoderSpeed);
 
-        vTaskDelay(xDelay);
+        // printf(
+        //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",
+        //     count++,
+        //     dummyIMU_Ax,
+        //     dummyIMU_Ay,
+        //     dummyIMU_Az,
+        //     encoderPos,
+        //     encoderSpeed,
+        //     dummyServoPos,
+        //     dummyLidarDist
+        // );
+
+        vTaskDelay(pdMS_TO_TICKS(1000));
     }
 } 
-
-void hearbeat_init() {
-    xTaskCreate(
-        statusHeartbeatTask,
-        "StatusHeartbeat",
-        1024,      // Stack size in words (not bytes)
-        NULL,      // Task parameter
-        1,         // Priority
-        NULL       // Task handle (optional)
-    );
-}

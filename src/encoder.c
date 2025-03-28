@@ -8,7 +8,7 @@
 #include "simple_encoder_substep.h"
 
 
-# define METERS_PER_SUBSTEP 0.0000274122807018 // 36480 substeps per meter
+# define METERS_PER_SUBSTEP 0.0000191614930635 // 52188 substeps in 1.5m
 # define PHASE_0_SIZE 154
 
 

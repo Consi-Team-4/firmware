@@ -3,7 +3,6 @@ add_executable(${ProjectName}
     main.c
 
     # Controllers
-    esc.c
     servo.c
 
     # Sensors
@@ -13,6 +12,7 @@ add_executable(${ProjectName}
     lidar.c
 
     # Tasks: Active components
+    console.c
     heartbeat.c
 
 
@@ -20,7 +20,6 @@ add_executable(${ProjectName}
     log.c
     debug.c
     freeRTOSHelpers.c
-    kalman.cpp
 )
 
 # PIO header generation (adjust if you're using more .pio files)

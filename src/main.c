@@ -8,15 +8,16 @@
 #include "pico/stdlib.h"
 
 // === Local Modules ===
-#include "esc.h"
 #include "heartbeat.h"
 #include "encoder.h"
 #include "servo.h"
 #include "log.h"
 #include "lidar.h"
+#include "console.h"
 
 
-const uint start_button = 18; // Pin D6
+
+const uint startButtonPin = 18; // Pin D6
 
 // === Main ===
 int main() {
@@ -33,18 +34,22 @@ int main() {
     // printf("Start ==========================================================================\n");
 
 
-    log_init();
-    log_printf(LOG_INFO, "System startup complete.");
+    // log_init();
+    // log_printf(LOG_INFO, "System startup complete.");
 
-    lidarSetup();
-    //encoderSetup();
-    servoSetup(); //starts cli for setting servo positions
+    //lidarSetup();
+    encoderSetup();
+    servoSetup();
+    consoleSetup();
+    heartbeatSetup();
 
- 
-    //escSetup(); starts cli for setting esc speeds
-    //hearbeat_init();
-
-    while(gpio_get(start_button)) {
+    // Wait for red start button pin to be pressed
+    // This gives us time to turn on the esc and get it calibrated.
+    gpio_init(startButtonPin);
+    gpio_set_dir(startButtonPin, false);
+    gpio_pull_up(startButtonPin);
+    sleep_ms(10);
+    while(gpio_get(startButtonPin)) {
         sleep_ms(50);
         printf("Waiting for start button.\n");
         sleep_ms(50);

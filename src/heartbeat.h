@@ -1,10 +1,7 @@
 #ifndef HEARTBEAT_H
 #define HEARTBEAT_H
 
-// FreeRTOS task prototype
-void statusHeartbeatTask(void *pvParameters);
-
-void hearbeat_init();
+void heartbeatSetup();
 
 
 #endif // HEARTBEAT_H

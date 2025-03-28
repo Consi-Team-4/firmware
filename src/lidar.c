@@ -93,9 +93,9 @@ static void lidarTaskFunc(void *) {
         }
 
         if (dist_cm < 10) {
-            servoSetAll(500);
+            //servoSetAll(500);
         } else if (dist_cm < 20) {
-            servoSetAll(1000);
+            //servoSetAll(1000);
         }
     }
 }
