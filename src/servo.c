@@ -35,10 +35,12 @@ static const uint8_t SERVO_GPIO[SERVO_COUNT] = {
 };
 
 static const bool SERVO_INVERT[SERVO_COUNT] = {
-    [SERVO_FR] = true,  // Inverted
-    [SERVO_FL] = false,  // Inverted
-    [SERVO_BR] = false,
-    [SERVO_BL] = true,
+    [SERVO_FR]      = true,
+    [SERVO_FL]      = false,
+    [SERVO_BR]      = false,
+    [SERVO_BL]      = true,
+    [ESC]           = false,
+    [SERVO_STEER]   = false,
 };
 
 
@@ -59,9 +61,12 @@ void servoSetup() {
 }
 
 void servoWrite(ServoID servo, int value) {
+    if (servo < 0 || servo >= SERVO_COUNT) { return; }
+
     int clippedValue = value;
     if (clippedValue > 1000) { clippedValue = 1000; }
     else if (clippedValue < -1000) { clippedValue = -1000; }
+    if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all servos go up with positive numbers
 
     uint us = PWM_CENTER + clippedValue;
     pwm_set_gpio_level(SERVO_GPIO[servo], us);
