@@ -3,10 +3,10 @@ This is the main firmware repo for the active suspension car.
 
 
 # Libraries
-FreeRTOS
-pico-i2c-dma
+- FreeRTOS
+- pico-i2c-dma
 
-## FreeRTOS note:
+### FreeRTOS note:
 Dynamic memory allocation is enabled (pico-i2c-dma uses it and I didn't feel like rewriting that), but static allocation is generally preferred where reasonable.
 
 
