@@ -64,9 +64,9 @@ void servoWrite(ServoID servo, int value) {
     if (servo < 0 || servo >= SERVO_COUNT) { return; }
 
     int clippedValue = value;
-    if (clippedValue > 1000) { clippedValue = 1000; }
-    else if (clippedValue < -1000) { clippedValue = -1000; }
-    if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all servos go up with positive numbers
+    if (clippedValue > servoLimits[servo].maxPosition) { clippedValue = servoLimits[servo].maxPosition; }
+    else if (clippedValue < servoLimits[servo].minPosition) { clippedValue = servoLimits[servo].minPosition; }
+    if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all suspension servos go up with negative numbers
 
     uint us = PWM_CENTER + clippedValue;
     pwm_set_gpio_level(SERVO_GPIO[servo], us);
