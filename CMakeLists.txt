@@ -40,7 +40,6 @@ add_subdirectory(src)
 
 # External libs
 add_subdirectory(lib/pico-i2c-dma/src)
-add_subdirectory(lib/ukf_engl)
 
 # Optional: Add WiFiNINA if needed in the future
 # add_subdirectory(lib/WiFiNINA/src)

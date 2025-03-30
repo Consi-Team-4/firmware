@@ -43,7 +43,6 @@ target_link_libraries(${ProjectName}
     hardware_uart
     FreeRTOS-Kernel-Heap4
     i2c_dma
-    ukf_engl
 )
 
 # Enable USB and UART stdio

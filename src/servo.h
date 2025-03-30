@@ -3,6 +3,8 @@
 
 #include "pico/stdlib.h"
 
+#define SERVO_PERIOD_MS 5
+
 typedef enum {
     SERVO_FR = 0,
     SERVO_FL = 1,

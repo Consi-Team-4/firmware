@@ -10,9 +10,8 @@
 
 #include "servo.h"
 #include "encoder.h"
+#include "imu.h"
 
-
-#define PeriodMS 5
 
 static uint64_t lastMicros;
 
@@ -30,7 +29,7 @@ static bool escFeedbackEnable = false;
 
 
 static float timeConstantToDecayFactor(float timeConstant) { // Time constant in seconds
-    return expf(-PeriodMS/(1000 * timeConstant));
+    return expf(-SERVO_PERIOD_MS/(1000 * timeConstant));
 }
 
 static float suspensionKP;
@@ -40,21 +39,22 @@ float suspensionHighpass;
 typedef struct suspensionData_s {
     ServoID servo;
     float neutralPosition;
-    float maxPosition;
-    float minPosition;
     float integral;
     float output;
 } suspensionData_t;
 
 static suspensionData_t suspensionData[4] = {
-    [SERVO_FR]  = {SERVO_FR, 0, 400, -400, 0, 0},
-    [SERVO_FL]  = {SERVO_FL, 0, 400, -400, 0, 0},
-    [SERVO_BR]  = {SERVO_BR, 0, 400, -400, 0, 0},
-    [SERVO_BL]  = {SERVO_BL, 0, 400, -400, 0, 0},
+    [SERVO_FR] = { SERVO_FR, -150, 0, 0 },
+    [SERVO_FL] = { SERVO_FL, -150, 0, 0 },
+    [SERVO_BR] = { SERVO_BR, -350, 0, 0 },
+    [SERVO_BL] = { SERVO_BL, -350, 0, 0 },
 };
 
 static bool suspensionFeedbackEnable = false;
 
+
+const float halfLength = 0.16; //Distance from IMU to center of axle
+const float halfWidth = 0.06; // Distance from center of axel to wheel
 
 
 static StaticTimer_t feedbackTimerBuffer;
@@ -69,7 +69,7 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz);
 
 // Functions to call from elsewhere
 void controllerSetup() {
-    feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(PeriodMS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
+    feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(SERVO_PERIOD_MS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
     xTimerStart(feedbackTimer, portMAX_DELAY); 
 }
 
@@ -95,7 +95,22 @@ void escEnable(bool enable) {
 }
 
 
+void suspensionSetK(float KP, float KI, float KD, float highpassTau) {
+    for (int i = 0; i < 4; i++) {
+        suspensionData[i].integral = 0;
+    }
+    suspensionKP = KP;
+    suspensionKI = KI;
+    suspensionKD = KD;
+    suspensionHighpass = timeConstantToDecayFactor(highpassTau);
+}
 
+void suspensionEnable(bool enable) {
+    suspensionFeedbackEnable = enable;
+    for (int i = 0; i < 4; i++) {
+        suspensionData[i].integral = 0;
+    }
+}
 
 
 void feedback(TimerHandle_t xTimer) {
@@ -109,13 +124,16 @@ void feedback(TimerHandle_t xTimer) {
         escFeedback(dt, encoderSpeed);
     }
 
-    // if (suspensionFeedbackEnable) {
-    //     // Calculate z and vz for each servo here - signs for rotational components are different on each servo
-    //     suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
-    // }
+    if (suspensionFeedbackEnable) {
+        imuFiltered_t imuFiltered;
+        imuGetFiltered(&imuFiltered);
+
+        
+        // suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
+    }
 }
 
 void escFeedback(float dt, float encoderSpeed) {
@@ -139,6 +157,7 @@ void escFeedback(float dt, float encoderSpeed) {
 }
 
 void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz) {
+    servoLimits_t limits = servoLimits()[data->servo];
     // Using the veloctiy directly as the derivative input
     // No need to deal with setpoint since setpoint is always 0
 
@@ -148,14 +167,14 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz) {
     // Limiting such that (maxPosition-neutralPosition) >= suspensionKP*(-maxP) + data->integral + suspensionKD*(-maxD)
     #define maxP 0.1
     #define maxD 1
-    const float maxIntegral = data->maxPosition - data->neutralPosition + suspensionKP*maxP + suspensionKD*maxD;
-    const float minIntegral = data->minPosition - data->neutralPosition + suspensionKP*(-maxP) + suspensionKD*(-maxD);
+    const float maxIntegral = limits.maxPosition - data->neutralPosition + suspensionKP*maxP + suspensionKD*maxD;
+    const float minIntegral = limits.minPosition - data->neutralPosition + suspensionKP*(-maxP) + suspensionKD*(-maxD);
     if (data->integral > maxIntegral) { data->integral = maxIntegral; }
     if (data->integral < minIntegral) { data->integral = minIntegral; }
 
     data->output = data->neutralPosition + suspensionKP*(-z) + data->integral + suspensionKD*(-vz);
     
-    if (data->output > data->maxPosition) { data->output = data->maxPosition; }
-    else if (data->output < data->minPosition) { data->output = data->minPosition; }
+    if (data->output > limits.maxPosition) { data->output = limits.maxPosition; }
+    else if (data->output < limits.minPosition) { data->output = limits.minPosition; }
     servoWrite(data->servo, (int)data->output);
 }

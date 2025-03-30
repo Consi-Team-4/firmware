@@ -21,7 +21,6 @@
 
 // === PWM Config ===
 #define PWM_CLKDIV 125.0 // 1MHz
-#define PWM_WRAP 5000 // 5ms
 #define PWM_CENTER 1500
 
 // === Mappings ===
@@ -43,7 +42,7 @@ static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_STEER]   = false,
 };
 
-static const servoLimits_t servoLimitsData[SERVO_COUNT] = {
+static servoLimits_t servoLimitsData[SERVO_COUNT] = {
     [SERVO_FR]      = { -600,   150 },
     [SERVO_FL]      = { -600,   150 },
     [SERVO_BR]      = { -800,   -50 },
@@ -61,14 +60,14 @@ void servoSetup() {
     for (ServoID i = 0; i < SERVO_COUNT; i++) {
         const uint8_t gpio = SERVO_GPIO[i];
 
-        pwm_set_gpio_level(gpio, PWM_CENTER); // Center
+        pwm_set_gpio_level(gpio, (servoLimits()[i].minPosition + servoLimits()[i].maxPosition)/2); // Center
         gpio_set_function(gpio, GPIO_FUNC_PWM);
 
         // Set up slice
         // Note: Since the two front servos and the two rear servos share a slice, this gets called twice. I don't think that's an issue?
         uint slice = pwm_gpio_to_slice_num(gpio);
         pwm_set_clkdiv(slice, PWM_CLKDIV);
-        pwm_set_wrap(slice, PWM_WRAP);
+        pwm_set_wrap(slice, 1000*SERVO_PERIOD_MS);
         pwm_set_enabled(slice, true);
     }
 }

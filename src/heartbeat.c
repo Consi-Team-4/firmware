@@ -6,6 +6,7 @@
 
 #include "encoder.h"
 #include "controller.h"
+#include "imu.h"
 
 // Dummy data values (keep others if still using dummy values for now)
 float dummyIMU_Ax = 0.0f;
@@ -33,12 +34,16 @@ void heartbeatTaskFunc(void *) {
     uint32_t encoderSteps, encoderSpeed_2_20;
     float setpoint, integral, output;
 
+    imuRaw_t imuRaw;
+
     while (1) {
         encoderRead(&encoderPos, &encoderSpeed);
         encoderReadDebug(&encoderSteps, &encoderSpeed_2_20);
         controllerInfo(&setpoint, &integral, &output);
+        imuGetRaw(&imuRaw);
 
-        printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
+        //printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
+        printf("Gx: %f7.3 Gy: %f7.3 Gz: %f7.3 Xx: %f7.3 Ay: %f7.3 Ay: %f7.3\n", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
 
         // printf(
         //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",
@@ -52,6 +57,6 @@ void heartbeatTaskFunc(void *) {
         //     dummyLidarDist
         // );
 
-        vTaskDelay(pdMS_TO_TICKS(1000));
+        vTaskDelay(pdMS_TO_TICKS(100));
     }
 } 
