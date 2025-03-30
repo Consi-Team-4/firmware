@@ -16,8 +16,8 @@
 #define LIDAR1_RX_PIN 21
 
 #define LIDAR_BAUDRATE 115200
-#define MAX_QUEUE_SIZE 100
-#define RELEVANT_LIDAR_DATA 20
+#define MAX_QUEUE_SIZE 2048
+#define RELEVANT_LIDAR_DATA 128
 #define TOLERANCE 50
 
 #define WHEEL_DISTANCE 300                       // millimeters
@@ -45,7 +45,14 @@ static void uart1RxISR(void);
 
 typedef struct
 {
-    uint16_t data[MAX_QUEUE_SIZE];
+    uint16_t lidar_reading;
+    uint16_t x_position;
+    int servo_setting;
+} LidarData;
+
+typedef struct
+{
+    LidarData data[MAX_QUEUE_SIZE];
     // int front;
     // int rear;
     // int size;
@@ -71,15 +78,21 @@ void initializeQueue(Queue *q)
 // Function to check if the queue is full
 bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE); }
 
+LidarData peek(Queue *q)
+{
+    return q->data[q->counter - 1];
+}
+
 // Function to add an element to the queue (Enqueue
 // operation)
-void enqueue(Queue *q, int value)
+void enqueue(Queue *q, int distance, int position)
 {
     if (isFull(q))
     {
         q->counter = 0;
     }
-    q->data[q->counter] = value;
+    q->data->lidar_reading[q->counter] = distance;
+    q->data->x_position[q->counter] = position;
     q->counter++;
     if (q->numPoints < MAX_QUEUE_SIZE)
     {
@@ -94,11 +107,11 @@ void printQueue(Queue *q)
     int count = q->counter;
     for (int i = count; i < MAX_QUEUE_SIZE; i++)
     {
-        printf("%d ", q->data[i]); // everything after/including the counter
+        printf("%d ", q->data->lidar_reading[i]); // everything after/including the counter
     }
     for (int i = 0; i < count; i++)
     {
-        printf("%d ", q->data[i]); // everything before the counter
+        printf("%d ", q->data->lidar_reading[i]); // everything before the counter
     }
     printf("\n");
 }
@@ -123,10 +136,10 @@ double calculate_queue_variance(Queue *q)
 
     while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
     {
-        if (q->data[i] != 0)
+        if (q->data->lidar_reading[i] != 0)
         {
             num_points++;
-            sum += q->data[i];
+            sum += q->data->lidar_reading[i];
             i--;
         }
     }
@@ -135,10 +148,10 @@ double calculate_queue_variance(Queue *q)
         i = MAX_QUEUE_SIZE - 1;
         while (num_points < RELEVANT_LIDAR_DATA)
         {
-            if (q->data[i] != 0)
+            if (q->data->lidar_reading[i] != 0)
             {
                 num_points++;
-                sum += q->data[i];
+                sum += q->data->lidar_reading[i];
                 i--;
             }
         }
@@ -151,10 +164,10 @@ double calculate_queue_variance(Queue *q)
 
     while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
     {
-        if (q->data[i] != 0)
+        if (q->data->lidar_reading[i] != 0)
         {
             num_points++;
-            variance += pow(q->data[i] - mean, 2);
+            variance += pow(q->data->lidar_reading[i] - mean, 2);
             i--;
         }
     }
@@ -163,10 +176,10 @@ double calculate_queue_variance(Queue *q)
         i = MAX_QUEUE_SIZE - 1;
         while (num_points < RELEVANT_LIDAR_DATA)
         {
-            if (q->data[i] != 0)
+            if (q->data->lidar_reading[i] != 0)
             {
                 num_points++;
-                variance += pow(q->data[i] - mean, 2);
+                variance += pow(q->data->lidar_reading[i] - mean, 2);
                 i--;
             }
         }
@@ -363,9 +376,13 @@ static void lidarTaskFunc(void *)
             // log_printf(LOG_INFO, "LIDAR1: %3d mm | Strength: %5u | Temp: %.2f°C", dist_mm1, strength1, temp_c1);
         }
 
+        // get position from encoder - this is total distance the car has covered
+        float encoderPosition, encoderSpeed;
+        encoderRead(&encoderPosition, &encoderSpeed);
+
         // add this value to the queue of lidar data
-        enqueue(&q_0, dist_mm0);
-        enqueue(&q_1, dist_mm1);
+        enqueue(&q_0, dist_mm0, encoderPosition);
+        enqueue(&q_1, dist_mm1, encoderPosition);
 
         // calculate variance of this data
         // double variance0 = sqrt(calculate_queue_variance(&q_0, 10));
@@ -384,26 +401,26 @@ static void lidarTaskFunc(void *)
 
                 if (q_0.counter == 0)
                 {
-                    servoWrite(0, mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1]));
-                    servoWrite(2, mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1]));
+                    LidarData data = peek(&q_0);
+                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[MAX_QUEUE_SIZE - 1]);
                 }
                 else
                 {
-                    servoWrite(0, mapLidarToServo(q_0.data[q_0.counter - 1]));
-                    servoWrite(2, mapLidarToServo(q_0.data[q_0.counter - 1]));
+                    LidarData data = peek(&q_0);
+                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[q_0.counter - 1]);
                 }
             }
             else if (variance1 > TOLERANCE)
             {
                 if (q_1.counter == 0)
                 {
-                    servoWrite(1, mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1]));
-                    servoWrite(3, mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1]));
+                    LidarData data = peek(&q_0);
+                    data.servo_setting = mapLidarToServo(q_1.data->lidar_reading[MAX_QUEUE_SIZE - 1]);
                 }
                 else
                 {
-                    servoWrite(1, mapLidarToServo(q_1.data[q_1.counter - 1]));
-                    servoWrite(3, mapLidarToServo(q_1.data[q_1.counter - 1]));
+                    LidarData data = peek(&q_0);
+                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[q_1.counter - 1]);
                 }
             }
         }
