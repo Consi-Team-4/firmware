@@ -16,7 +16,8 @@
 #define LIDAR1_RX_PIN 21
 
 #define LIDAR_BAUDRATE 115200
-#define MAX_QUEUE_SIZE 10
+#define MAX_QUEUE_SIZE 100
+#define RELEVANT_LIDAR_DATA 20
 
 static StaticTask_t lidarTaskBuffer;
 static StackType_t lidarStackBuffer[1000];
@@ -43,6 +44,7 @@ typedef struct
     // int rear;
     // int size;
     int counter;
+    int numPoints;
 } Queue;
 
 Queue q_0;
@@ -54,6 +56,7 @@ void initializeQueue(Queue *q)
     // q->front = 0;
     // q->rear = 0;
     q->counter = 0;
+    q->numPoints = 0;
 }
 
 // Function to check if the queue is empty
@@ -72,6 +75,10 @@ void enqueue(Queue *q, int value)
     }
     q->data[q->counter] = value;
     q->counter++;
+    if (q->numPoints < MAX_QUEUE_SIZE)
+    {
+        q->numPoints++;
+    }
 }
 
 // Function to print the current queue
@@ -93,49 +100,75 @@ void printQueue(Queue *q)
  * Prints out all of the items in the queue
  */
 
+// make queue bigger
+// make queue get actual variance
+
 double calculate_queue_variance(Queue *q)
 {
-    // int variance = 0;
-    // int mean = 0;
-    // int sum = 0;
+    int sum = 0, mean, variance = 0;
+    int first_point = q->counter - 1 - RELEVANT_LIDAR_DATA;
+    int i = q->counter - 1;
+    int num_points = 0;
 
-    // // Calculate the mean of the last `n` elements
-    // for (int i = 0; i < MAX_QUEUE_SIZE; i++)
-    // {
-    //     sum += q->data[i];
-    // }
-    // mean = sum / MAX_QUEUE_SIZE;
-
-    // // Calculate the variance
-    // for (int i = 0; i < MAX_QUEUE_SIZE; i++)
-    // {
-    //     if (q->data[i] != 0)
-    //     { // ignore any 0 values when queue is first initialized
-    //         variance += pow(q->data[i] - mean, 2);
-    //     }
-    // }
-    // variance /= MAX_QUEUE_SIZE; // Divide by `n`, not `size`
-
-    // return variance;
-    int max = 0;
-    int min = 1000;
-    for (int i = 0; i < MAX_QUEUE_SIZE; i++)
+    if (q->numPoints < RELEVANT_LIDAR_DATA)
     {
-        // printf("data: %d\n", q->data[i]);
-        if (q->data[i] < min)
+        return -1; // I don't think we need to handle the case of the first few ms where we don't have enough data.
+    }
+
+    while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
+    {
+        if (q->data[i] != 0)
         {
-            min = q->data[i];
-            printf("new min: %d\n", min);
-        }
-        if (q->data[i] > max)
-        {
-            max = q->data[i];
+            num_points++;
+            sum += q->data[i];
+            i--;
         }
     }
-    int maxmin = max - min;
-    printf("max: %d, min: %d, max-min: %d\n", max, min, maxmin);
+    if (num_points < RELEVANT_LIDAR_DATA)
+    {
+        i = MAX_QUEUE_SIZE - 1;
+        while (num_points < RELEVANT_LIDAR_DATA)
+        {
+            if (q->data[i] != 0)
+            {
+                num_points++;
+                sum += q->data[i];
+                i--;
+            }
+        }
+    }
+    mean = sum / RELEVANT_LIDAR_DATA;
 
-    return maxmin;
+    // reset
+    i = q->counter - 1;
+    num_points = 0;
+
+    while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
+    {
+        if (q->data[i] != 0)
+        {
+            num_points++;
+            variance += pow(q->data[i] - mean, 2);
+            i--;
+        }
+    }
+    if (num_points < RELEVANT_LIDAR_DATA)
+    {
+        i = MAX_QUEUE_SIZE - 1;
+        while (num_points < RELEVANT_LIDAR_DATA)
+        {
+            if (q->data[i] != 0)
+            {
+                num_points++;
+                variance += pow(q->data[i] - mean, 2);
+                i--;
+            }
+        }
+    }
+    variance /= RELEVANT_LIDAR_DATA;
+    printf("mean: %d, variance: %d", mean, variance);
+
+    return variance;
 }
 
 void lidar0Setup()
