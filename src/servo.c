@@ -42,7 +42,7 @@ static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_STEER]   = false,
 };
 
-static const servoLimits_t servoLimitsData[SERVO_COUNT] = {
+static servoLimits_t servoLimitsData[SERVO_COUNT] = {
     [SERVO_FR]      = { -600,   150 },
     [SERVO_FL]      = { -600,   150 },
     [SERVO_BR]      = { -800,   -50 },
@@ -60,7 +60,7 @@ void servoSetup() {
     for (ServoID i = 0; i < SERVO_COUNT; i++) {
         const uint8_t gpio = SERVO_GPIO[i];
 
-        pwm_set_gpio_level(gpio, PWM_CENTER); // Center
+        pwm_set_gpio_level(gpio, (servoLimits()[i].minPosition + servoLimits()[i].maxPosition)/2); // Center
         gpio_set_function(gpio, GPIO_FUNC_PWM);
 
         // Set up slice

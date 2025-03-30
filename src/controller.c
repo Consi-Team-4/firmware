@@ -10,6 +10,7 @@
 
 #include "servo.h"
 #include "encoder.h"
+#include "imu.h"
 
 
 static uint64_t lastMicros;
@@ -124,7 +125,8 @@ void feedback(TimerHandle_t xTimer) {
     }
 
     if (suspensionFeedbackEnable) {
-        // Calculate z and vz for each servo here - signs for rotational components are different on each servo
+        imuFiltered_t imuFiltered;
+        imuGetFiltered(&imuFiltered);
 
         
         // suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);

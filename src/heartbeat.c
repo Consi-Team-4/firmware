@@ -43,7 +43,7 @@ void heartbeatTaskFunc(void *) {
         imuGetRaw(&imuRaw);
 
         //printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
-        printf("Gx: %f7.3 Gy: %f7.3 Gz: %f7.3 Xx: %f7.3 Ay: %f7.3 Ay: %f7.3 ", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
+        printf("Gx: %f7.3 Gy: %f7.3 Gz: %f7.3 Xx: %f7.3 Ay: %f7.3 Ay: %f7.3\n", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
 
         // printf(
         //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",

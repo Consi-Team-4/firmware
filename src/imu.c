@@ -290,9 +290,9 @@ static void imuTaskFunc(void *) {
                 imuRaw.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
                 imuRaw.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
                 imuRaw.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                imuRaw.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR;
-                imuRaw.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR;
-                imuRaw.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Ax = -data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Ay = -data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Az = -data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR;
                 xSemaphoreGive(imuRawMutex);
             }else {
                 // Only update time to avoid issues when filtering IMU data
