@@ -315,14 +315,18 @@ int mapLidarToServo(int lidarReading)
 {
     // get current speed of the car from encoder
     // float currentSpeed = getSpeed();
-    float currentSpeed = 1000; // for now
+    // float encoderPosition, currentSpeed;
+    // encoderRead(&encoderPosition, &currentSpeed);
+    // if (currentSpeed > 0.2) {
+
+    // }
 
     // int tiltDistance = LIDAR_HEIGHT * sin(THETA_IMU);
     // int lidarDistance = lidarReading * cos(THETA_LIDAR_NORMALIZATION - THETA_IMU);
     int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + THETA_IMU);
 
     // get amount of time that we should delay before adjusting front wheels
-    int setting = ((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000;
+    int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000);
     printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
     return setting;
 }
