@@ -62,7 +62,8 @@ TimerHandle_t feedbackTimer;
 
 
 void feedback(TimerHandle_t xTimer);
-void escFeedback(float dt);
+void escFeedback(float dt, float encoderSpeed);
+void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz);
 
 
 
@@ -108,13 +109,13 @@ void feedback(TimerHandle_t xTimer) {
         escFeedback(dt, encoderSpeed);
     }
 
-    if (suspensionFeedbackEnable) {
-        // Calculate z and vz for each servo here - signs for rotational components are different on each servo
-        suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
-    }
+    // if (suspensionFeedbackEnable) {
+    //     // Calculate z and vz for each servo here - signs for rotational components are different on each servo
+    //     suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
+    // }
 }
 
 void escFeedback(float dt, float encoderSpeed) {
@@ -152,7 +153,7 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz) {
     if (data->integral > maxIntegral) { data->integral = maxIntegral; }
     if (data->integral < minIntegral) { data->integral = minIntegral; }
 
-    data->output = data->neutralPosition + data->KP*(-z) + data->integral + data->KD*(-vz);
+    data->output = data->neutralPosition + suspensionKP*(-z) + data->integral + suspensionKD*(-vz);
     
     if (data->output > data->maxPosition) { data->output = data->maxPosition; }
     else if (data->output < data->minPosition) { data->output = data->minPosition; }

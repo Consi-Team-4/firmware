@@ -18,14 +18,7 @@ typedef struct servoLimits_s {
     int maxPosition;
 } servoLimits_t;
 
-const servoLimits_t servoLimits[SERVO_COUNT] = {
-    [SERVO_FR]      = { -600,   150 },
-    [SERVO_FL]      = { -600,   150 },
-    [SERVO_BR]      = { -800,   -50 },
-    [SERVO_BL]      = { -800,   -50 },
-    [ESC]           = { -1000,  1000},
-    [SERVO_STEER]   = { -300,   300 },
-};
+servoLimits_t* servoLimits();
 
 void servoSetup();
 
