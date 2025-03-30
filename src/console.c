@@ -10,6 +10,7 @@
 
 #include "servo.h"
 #include "controller.h"
+#include "imu.h"
 
 
 
@@ -226,6 +227,45 @@ void consoleTaskFunc(void *) {
                     default: if (input[1]) { printf("Unknown command E%c", input[1]); }
                 }
                 break; 
+            }
+
+            case 'I': { // IMU commands
+                switch(input[1]) {
+                    case 'K': { // IK - Set IMU filter parameters
+                        // IK <AngleTau> <LinearTau> <X>
+                        // Tau is in ms
+                        // X is how much rotation should be biased towards direction of maximum acceleration vs 0 (between 0 and 1000)
+                        char *next;
+                        char *start = input+2;
+
+                        int intAngleTau = strtol(start, &next, 10);
+                        if (next == start) { // Conversion failed
+                            printf ("Invalid Angle Tau\n");
+                            break;
+                        }
+                        start = next;
+
+                        int intLinearTau = strtol(start, &next, 10);
+                        if (next == start) { // Conversion failed
+                            printf ("Invalid Linear Tau\n");
+                            break;
+                        }
+                        start = next;
+
+                        int intX = strtol(start, NULL, 10);
+                        
+                        float AngleTau = intAngleTau / 1000.0; // Convert from ms to seconds
+                        float LinearTau = intLinearTau / 1000.0; // Convert from ms to seconds
+                        float x = intX / 1000.0;
+                        imuSetK(AngleTau, LinearTau, x);
+
+                        printf("Setting imu AngleTau=%f, LinearTau=%f, x=%f\n", AngleTau, LinearTau, x);
+                        break;
+                    }
+
+                    default: if (input[1]) { printf("Unknown command S%c", input[1]); }
+                }
+                break;
             }
             
             case 'M': { // Misc

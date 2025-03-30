@@ -11,18 +11,38 @@
 #include "hardware/irq.h"
 #include "hardware/gpio.h"
 #include "i2c_dma.h"
+#include <math.h>
 
 #include "constants.h"
 #include "LSM6DSOXdefines.h"
 #include "debug.h"
 
 // Goal is to get time, accelerometer data, and gyroscope data when triggered by interrupt.
-// These can then be passed to the kalman filter via a queue
+
+
+#define ODR_BITS 0b0111
+
+#if ODR_BITS == 0b001 // 12.5 Hz
+    #define IMU_PERIOD_US 80000
+#elif ODR_BITS == 0b010 // 26 Hz
+    #define IMU_PERIOD_US 38462
+#elif ODR_BITS == 0b011 // 52 Hz
+    #define IMU_PERIOD_US 19231
+#elif ODR_BITS == 0b0100 // 104 Hz
+    #define IMU_PERIOD_US 9615
+#elif ODR_BITS == 0b0101 // 208 Hz
+    #define IMU_PERIOD_US 4808
+#elif ODR_BITS == 0b0110 // 416 Hz
+    #define IMU_PERIOD_US 2404
+#elif ODR_BITS == 0b0111 // 833 Hz
+    #define IMU_PERIOD_US 1200
+#else
+    // Faster doesn't seem to work correctly
+#endif
+
+
 
 // For calibration purposes
-#define AXOFFS 0.035
-#define AYOFFS -0.028
-#define AZOFFS -0.034
 #define GXOFFS 0.5
 #define GYOFFS -0.9
 #define GZOFFS -0.7
@@ -45,13 +65,22 @@ static TaskHandle_t imuTask;
 static volatile uint64_t imuIrqMicros;
 
 // Putting a mutex on this so it doesn't get overwritten while another task is reading it
-static imuData_t imuData;
-static StaticSemaphore_t imuDataMutexBuffer;
-static SemaphoreHandle_t imuDataMutex;
+static imuRaw_t imuRaw;
+static StaticSemaphore_t imuRawMutexBuffer;
+static SemaphoreHandle_t imuRawMutex;
+
+static imuFiltered_t imuFiltered;
+static StaticSemaphore_t imuFilteredMutexBuffer;
+static SemaphoreHandle_t imuFilteredMutex;
 
 
-// Task to notify when IMU data is ready
-static TaskHandle_t imuTaskToNotify;
+static float timeConstantToDecayFactor(float timeConstant) { // Time constant in seconds
+    return expf(-IMU_PERIOD_US/(1000000 * timeConstant));
+}
+
+static float imuAngleHighpass; // highpass filter on angle integrals
+static float imuLinearHighpass; // highpass filter on linear integrals
+static float imuX; // How much does highpass decay towards 0 (0) or direction of maximum acceleration (1) (presumably due to gravity) ?
 
 
 // Forward declaring internal functions
@@ -68,8 +97,7 @@ static void imuTaskFunc(void *);
 
 
 
-void imuSetup(TaskHandle_t taskToNotify) {
-    imuTaskToNotify = taskToNotify;
+void imuSetup() {
 
     printf("Setting up SDK I2C...\n");
 
@@ -91,14 +119,12 @@ void imuSetup(TaskHandle_t taskToNotify) {
 
 
     printf("Setting up IMU...\n");
-
-    // Copying setup from arduino library with exception of 833Hz instead of 104Hz
     
-    // Accelerometer: 833 Hz, +-4g, LPF2 filter
-    res = writeRegisterSDK(REG_CTRL1_XL, 0b0111<<4 | 0b10<<2 | 0b1<<1);
+    // Accelerometer: frequency, +-4g, LPF2 filter
+    res = writeRegisterSDK(REG_CTRL1_XL, ODR_BITS<<4 | 0b10<<2 | 0b1<<1);
     printf("CTRL1_XL:\t%s\n", errorToString(res));
-    // Gyroscope: 833 Hz, +-2000 dps, not +-125dps
-    res = writeRegisterSDK(REG_CTRL2_G,  0b0111<<4 | 0b11<<2 | 0b0<<1);
+    // Gyroscope: frequency, +-2000 dps, not +-125dps
+    res = writeRegisterSDK(REG_CTRL2_G,  ODR_BITS<<4 | 0b11<<2 | 0b0<<1);
     printf("CTRL2_G:\t%s\n", errorToString(res));
     // Gyroscope: high performance mode, high pass disabled, 16MHz hp cuttof (irrelevant), OIS enable through SPI2, bypass accelerometer user offset, disable OIS (irrelevant)
     res = writeRegisterSDK(REG_CTRL7_G, 0x00);
@@ -133,17 +159,24 @@ void imuSetup(TaskHandle_t taskToNotify) {
     imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 4, imuStackBuffer, &imuTaskBuffer);
 
     printf("Creating Mutex...\n");
-    imuDataMutex = xSemaphoreCreateMutexStatic(&imuDataMutexBuffer);
+    imuRawMutex = xSemaphoreCreateMutexStatic(&imuRawMutexBuffer);
+    imuFilteredMutex = xSemaphoreCreateMutexStatic(&imuFilteredMutexBuffer);
 
     printf("Initializing I2C DMA driver...\n");
     res = i2c_dma_init(&i2c_dma, I2C_INST, 400*1000, I2C_SDA, I2C_SCL); // Initialize the dma driver for later
     printf("i2c_dma_init:\t%s\n", errorToString(res));
 }
 
-void imuGetData(imuData_t *buf) {
-    xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-    *buf = imuData;
-    xSemaphoreGive(imuDataMutex);
+void imuGetRaw(imuRaw_t *buf) {
+    xSemaphoreTake(imuRawMutex, portMAX_DELAY);
+    *buf = imuRaw;
+    xSemaphoreGive(imuRawMutex);
+}
+
+void imuGetFiltered(imuFiltered_t *buf) {
+    xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
+    *buf = imuFiltered;
+    xSemaphoreGive(imuFilteredMutex);
 }
 
 // Reading and writing to register using the regular i2c functions (needed for setup before the scheduler is started)
@@ -221,6 +254,16 @@ static void imuDataReadyIrqCallback(void) {
     return;
 }
 
+
+
+
+void imuSetK(float AngleTau, float LinearTau, float x) {
+    imuAngleHighpass = timeConstantToDecayFactor(AngleTau);
+    imuLinearHighpass = timeConstantToDecayFactor(LinearTau);
+    imuX = x;
+}
+
+
 static void imuTaskFunc(void *) {
     
     { // Read once to get the party started
@@ -235,38 +278,50 @@ static void imuTaskFunc(void *) {
             // Reading temperature too for the hell of it
 
             uint64_t tmpMicros = imuIrqMicros; // Save the current time in case it gets overwritten
-            uint64_t prevMicros = imuData.micros;
+            uint64_t prevMicros = imuRaw.micros;
 
             int16_t data[7];
             float temp;
 
             if (readRegistersDMA(REG_OUT_TEMP, (uint8_t*)data, sizeof(data)) == PICO_OK) {
                 temp = data[0] * 256.0 / LSM6DSOX_FSR + 25;
-                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-                imuData.micros = tmpMicros;
-                imuData.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
-                imuData.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
-                imuData.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                imuData.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR - AXOFFS;
-                imuData.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR - AYOFFS;
-                imuData.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR - AZOFFS;
-                xSemaphoreGive(imuDataMutex);
-            } else {
-                temp = NAN;
-                xSemaphoreTake(imuDataMutex, portMAX_DELAY);
-                imuData.micros = tmpMicros;
-                imuData.Gx = NAN;
-                imuData.Gy = NAN;
-                imuData.Gz = NAN;
-                imuData.Ax = NAN;
-                imuData.Ay = NAN;
-                imuData.Az = NAN;
-                xSemaphoreGive(imuDataMutex);
+                xSemaphoreTake(imuRawMutex, portMAX_DELAY);
+                imuRaw.micros = tmpMicros;
+                imuRaw.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
+                imuRaw.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
+                imuRaw.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
+                imuRaw.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                xSemaphoreGive(imuRawMutex);
+            }else {
+                // Only update time to avoid issues when filtering IMU data
+
+                // temp = NAN;
+                // xSemaphoreTake(imuRawMutex, portMAX_DELAY);
+                imuRaw.micros = tmpMicros;
+                // imuRaw.Gx = NAN;
+                // imuRaw.Gy = NAN;
+                // imuRaw.Gz = NAN;
+                // imuRaw.Ax = NAN;
+                // imuRaw.Ay = NAN;
+                // imuRaw.Az = NAN;
+                // xSemaphoreGive(imuRawMutex);
+
+                printf("IMU read error!\n");
             }
 
-            xTaskNotifyGive(imuTaskToNotify);
+            xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
+            // Find angles of maximum acceleration
 
-            // printf("%10lluus\t% 7.3fC\t% 7.4fgx\t% 7.4fgy\t% 7.4fgz\t% 7.1fdpsx\t% 7.1fdpsy\t% 7.1fdpsz\n", imuData.micros, temp, imuData.Ax, imuData.Ay, imuData.Az, imuData.Gx, imuData.Gy, imuData.Gz);
+            // float maxAccelRoll = 
+
+
+
+            // imuFiltered.roll = imu
+
+            
+            xSemaphoreGive(imuFilteredMutex);
         }
     }
 }

@@ -9,6 +9,7 @@
 
 // === Local Modules ===
 #include "heartbeat.h"
+#include "imu.h"
 #include "encoder.h"
 #include "servo.h"
 #include "log.h"
@@ -39,6 +40,7 @@ int main() {
     // log_printf(LOG_INFO, "System startup complete.");
 
     //lidarSetup();
+    imuSetup();
     encoderSetup();
     servoSetup();
     consoleSetup();

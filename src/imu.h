@@ -5,8 +5,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 
-
-typedef struct imuData_s {
+typedef struct imuRaw_s {
     uint64_t micros;
     // Gyros are rad/s (keeping everything in radians so trig functions are convenient)
     float Gx;
@@ -16,11 +15,24 @@ typedef struct imuData_s {
     float Ax;
     float Ay;
     float Az;
-} imuData_t;
+} imuRaw_t;
 
-void imuSetup(TaskHandle_t taskToNotify);
+typedef struct imuFiltered_s {
+    uint64_t micros;
+    // Gyros are rad/s (keeping everything in radians so trig functions are convenient)
+    float roll;
+    float pitch;
+    float Vroll;
+    float Vpitch;
+    float Vz;
+} imuFiltered_t;
+
+void imuSetup();
 
 // Only call from within a task
-void imuGetData(imuData_t *buf);
+void imuGetRaw(imuRaw_t *buf);
+void imuGetFiltered(imuFiltered_t *buf);
+
+void imuSetK(float AngleTau, float LinearTau, float x);
 
 #endif

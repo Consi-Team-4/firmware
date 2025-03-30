@@ -12,8 +12,6 @@
 #include "encoder.h"
 
 
-#define PeriodMS 5
-
 static uint64_t lastMicros;
 
 
@@ -30,7 +28,7 @@ static bool escFeedbackEnable = false;
 
 
 static float timeConstantToDecayFactor(float timeConstant) { // Time constant in seconds
-    return expf(-PeriodMS/(1000 * timeConstant));
+    return expf(-SERVO_PERIOD_MS/(1000 * timeConstant));
 }
 
 static float suspensionKP;
@@ -70,7 +68,7 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz);
 
 // Functions to call from elsewhere
 void controllerSetup() {
-    feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(PeriodMS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
+    feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(SERVO_PERIOD_MS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
     xTimerStart(feedbackTimer, portMAX_DELAY); 
 }
 
@@ -96,7 +94,22 @@ void escEnable(bool enable) {
 }
 
 
+void suspensionSetK(float KP, float KI, float KD, float highpassTau) {
+    for (int i = 0; i < 4; i++) {
+        suspensionData[i].integral = 0;
+    }
+    suspensionKP = KP;
+    suspensionKI = KI;
+    suspensionKD = KD;
+    suspensionHighpass = timeConstantToDecayFactor(highpassTau);
+}
 
+void suspensionEnable(bool enable) {
+    suspensionFeedbackEnable = enable;
+    for (int i = 0; i < 4; i++) {
+        suspensionData[i].integral = 0;
+    }
+}
 
 
 void feedback(TimerHandle_t xTimer) {
@@ -110,13 +123,15 @@ void feedback(TimerHandle_t xTimer) {
         escFeedback(dt, encoderSpeed);
     }
 
-    // if (suspensionFeedbackEnable) {
-    //     // Calculate z and vz for each servo here - signs for rotational components are different on each servo
-    //     suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
-    //     suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
-    // }
+    if (suspensionFeedbackEnable) {
+        // Calculate z and vz for each servo here - signs for rotational components are different on each servo
+
+        
+        // suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
+        // suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
+    }
 }
 
 void escFeedback(float dt, float encoderSpeed) {

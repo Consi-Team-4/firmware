@@ -21,7 +21,6 @@
 
 // === PWM Config ===
 #define PWM_CLKDIV 125.0 // 1MHz
-#define PWM_WRAP 5000 // 5ms
 #define PWM_CENTER 1500
 
 // === Mappings ===
@@ -68,7 +67,7 @@ void servoSetup() {
         // Note: Since the two front servos and the two rear servos share a slice, this gets called twice. I don't think that's an issue?
         uint slice = pwm_gpio_to_slice_num(gpio);
         pwm_set_clkdiv(slice, PWM_CLKDIV);
-        pwm_set_wrap(slice, PWM_WRAP);
+        pwm_set_wrap(slice, 1000*SERVO_PERIOD_MS);
         pwm_set_enabled(slice, true);
     }
 }
