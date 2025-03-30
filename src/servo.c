@@ -43,6 +43,19 @@ static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_STEER]   = false,
 };
 
+static const servoLimits_t servoLimitsData[SERVO_COUNT] = {
+    [SERVO_FR]      = { -600,   150 },
+    [SERVO_FL]      = { -600,   150 },
+    [SERVO_BR]      = { -800,   -50 },
+    [SERVO_BL]      = { -800,   -50 },
+    [ESC]           = { -1000,  1000},
+    [SERVO_STEER]   = { -300,   300 },
+};
+
+servoLimits_t* servoLimits() {
+    return servoLimitsData;
+}
+
 
 void servoSetup() {
     for (ServoID i = 0; i < SERVO_COUNT; i++) {
@@ -64,8 +77,8 @@ void servoWrite(ServoID servo, int value) {
     if (servo < 0 || servo >= SERVO_COUNT) { return; }
 
     int clippedValue = value;
-    if (clippedValue > servoLimits[servo].maxPosition) { clippedValue = servoLimits[servo].maxPosition; }
-    else if (clippedValue < servoLimits[servo].minPosition) { clippedValue = servoLimits[servo].minPosition; }
+    if (clippedValue > servoLimits()[servo].maxPosition) { clippedValue = servoLimits()[servo].maxPosition; }
+    else if (clippedValue < servoLimits()[servo].minPosition) { clippedValue = servoLimits()[servo].minPosition; }
     if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all suspension servos go up with negative numbers
 
     uint us = PWM_CENTER + clippedValue;

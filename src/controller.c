@@ -63,7 +63,8 @@ TimerHandle_t feedbackTimer;
 
 
 void feedback(TimerHandle_t xTimer);
-void escFeedback(float dt);
+void escFeedback(float dt, float encoderSpeed);
+void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz);
 
 
 
@@ -109,15 +110,13 @@ void feedback(TimerHandle_t xTimer) {
         escFeedback(dt, encoderSpeed);
     }
 
-    if (suspensionFeedbackEnable) {
-        // Calculate z and vz for each servo here - signs for rotational components are different on each servo
-
-        
-        suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
-        suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
-    }
+    // if (suspensionFeedbackEnable) {
+    //     // Calculate z and vz for each servo here - signs for rotational components are different on each servo
+    //     suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
+    //     suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
+    // }
 }
 
 void escFeedback(float dt, float encoderSpeed) {
@@ -141,7 +140,7 @@ void escFeedback(float dt, float encoderSpeed) {
 }
 
 void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz) {
-    servoLimits_t limits = servoLimits[data->servo];
+    servoLimits_t limits = servoLimits()[data->servo];
     // Using the veloctiy directly as the derivative input
     // No need to deal with setpoint since setpoint is always 0
 
@@ -156,7 +155,7 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz) {
     if (data->integral > maxIntegral) { data->integral = maxIntegral; }
     if (data->integral < minIntegral) { data->integral = minIntegral; }
 
-    data->output = data->neutralPosition + data->KP*(-z) + data->integral + data->KD*(-vz);
+    data->output = data->neutralPosition + suspensionKP*(-z) + data->integral + suspensionKD*(-vz);
     
     if (data->output > limits.maxPosition) { data->output = limits.maxPosition; }
     else if (data->output < limits.minPosition) { data->output = limits.minPosition; }
