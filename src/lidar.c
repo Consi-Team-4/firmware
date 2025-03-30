@@ -18,6 +18,12 @@
 #define LIDAR_BAUDRATE 115200
 #define MAX_QUEUE_SIZE 100
 #define RELEVANT_LIDAR_DATA 20
+#define TOLERANCE 50
+
+#define WHEEL_DISTANCE 300                       // millimeters
+#define THETA_LIDAR_NORMALIZATION 0 * M_PI / 180 // base angle of lidar, used for normalization
+#define THETA_IMU 0 * M_PI / 180                 // degrees, angle retrieved from IMU
+#define LIDAR_HEIGHT 284                         // millimeters
 
 static StaticTask_t lidarTaskBuffer;
 static StackType_t lidarStackBuffer[1000];
@@ -166,7 +172,7 @@ double calculate_queue_variance(Queue *q)
         }
     }
     variance /= RELEVANT_LIDAR_DATA;
-    printf("mean: %d, variance: %d", mean, variance);
+    // printf("mean: %d, variance: %d", mean, variance);
 
     return variance;
 }
@@ -305,6 +311,22 @@ static void uart1RxISR(void)
     portYIELD_FROM_ISR(higherPriorityTaskWoken);
 }
 
+int mapLidarToServo(int lidarReading)
+{
+    // get current speed of the car from encoder
+    // float currentSpeed = getSpeed();
+    float currentSpeed = 1000; // for now
+
+    // int tiltDistance = LIDAR_HEIGHT * sin(THETA_IMU);
+    // int lidarDistance = lidarReading * cos(THETA_LIDAR_NORMALIZATION - THETA_IMU);
+    int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + THETA_IMU);
+
+    // get amount of time that we should delay before adjusting front wheels
+    int setting = ((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000;
+    printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
+    return setting;
+}
+
 static void lidarTaskFunc(void *)
 {
     while (true)
@@ -325,7 +347,7 @@ static void lidarTaskFunc(void *)
         }
         else
         {
-            log_printf(LOG_INFO, "LIDAR0: %3d mm | Strength: %5u | Temp: %.2f°C", dist_mm0, strength0, temp_c0);
+            // log_printf(LOG_INFO, "LIDAR0: %3d mm | Strength: %5u | Temp: %.2f°C", dist_mm0, strength0, temp_c0);
         }
 
         if (dist_mm1 == 65535 || strength1 < 100)
@@ -334,7 +356,7 @@ static void lidarTaskFunc(void *)
         }
         else
         {
-            log_printf(LOG_INFO, "LIDAR1: %3d mm | Strength: %5u | Temp: %.2f°C", dist_mm1, strength1, temp_c1);
+            // log_printf(LOG_INFO, "LIDAR1: %3d mm | Strength: %5u | Temp: %.2f°C", dist_mm1, strength1, temp_c1);
         }
 
         // add this value to the queue of lidar data
@@ -348,19 +370,38 @@ static void lidarTaskFunc(void *)
         int variance1 = calculate_queue_variance(&q_1);
 
         // double variance1 = sqrt(calculate_queue_variance(&q_1, 10));
-        printQueue(&q_0);
-        printf("\n");
-        printQueue(&q_1);
-        log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm", variance0, variance1);
+        // log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm\n", variance0, variance1);
 
-        if (dist_mm0 < 10)
-        {
+        if (q_0.numPoints == MAX_QUEUE_SIZE)
+        { // if we have enough data to warrant making changes
+            if (variance0 > TOLERANCE)
+            {
+                // map values to amt for servos to move
 
-            // servoSetAll(500);
-        }
-        else if (dist_mm0 < 20)
-        {
-            // servoSetAll(1000);
+                if (q_0.counter == 0)
+                {
+                    servoWrite(0, mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1]));
+                    servoWrite(2, mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1]));
+                }
+                else
+                {
+                    servoWrite(0, mapLidarToServo(q_0.data[q_0.counter - 1]));
+                    servoWrite(2, mapLidarToServo(q_0.data[q_0.counter - 1]));
+                }
+            }
+            else if (variance1 > TOLERANCE)
+            {
+                if (q_1.counter == 0)
+                {
+                    servoWrite(1, mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1]));
+                    servoWrite(3, mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1]));
+                }
+                else
+                {
+                    servoWrite(1, mapLidarToServo(q_1.data[q_1.counter - 1]));
+                    servoWrite(3, mapLidarToServo(q_1.data[q_1.counter - 1]));
+                }
+            }
         }
     }
 }
