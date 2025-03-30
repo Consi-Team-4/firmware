@@ -35,17 +35,17 @@ static const uint8_t SERVO_GPIO[SERVO_COUNT] = {
 };
 
 static const bool SERVO_INVERT[SERVO_COUNT] = {
-    [SERVO_FR]      = true,
-    [SERVO_FL]      = false,
-    [SERVO_BR]      = false,
-    [SERVO_BL]      = true,
+    [SERVO_FR]      = false, // Suspension servos rotating downards (and therefore lifting the car) is positive. More convenient for feedback control.
+    [SERVO_FL]      = true,
+    [SERVO_BR]      = true,
+    [SERVO_BL]      = false,
     [ESC]           = false,
     [SERVO_STEER]   = false,
 };
 
 
 void servoSetup() {
-    for (int i = 0; i < SERVO_COUNT; i++) {
+    for (ServoID i = 0; i < SERVO_COUNT; i++) {
         const uint8_t gpio = SERVO_GPIO[i];
 
         pwm_set_gpio_level(gpio, PWM_CENTER); // Center
@@ -64,9 +64,9 @@ void servoWrite(ServoID servo, int value) {
     if (servo < 0 || servo >= SERVO_COUNT) { return; }
 
     int clippedValue = value;
-    if (clippedValue > 1000) { clippedValue = 1000; }
-    else if (clippedValue < -1000) { clippedValue = -1000; }
-    if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all servos go up with positive numbers
+    if (clippedValue > servoLimits[servo].maxPosition) { clippedValue = servoLimits[servo].maxPosition; }
+    else if (clippedValue < servoLimits[servo].minPosition) { clippedValue = servoLimits[servo].minPosition; }
+    if (SERVO_INVERT[servo]) { clippedValue = -1 * clippedValue; } // Make it so all suspension servos go up with negative numbers
 
     uint us = PWM_CENTER + clippedValue;
     pwm_set_gpio_level(SERVO_GPIO[servo], us);

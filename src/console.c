@@ -71,7 +71,7 @@ void consoleTaskFunc(void *) {
                 int servoVal = strtol(next, NULL, 10);
 
                 
-                if (servoNum = ESC) { escEnable(false); } // Disable if it's the ESC
+                if (servoNum == ESC) { escEnable(false); } // Disable if it's the ESC
                 servoWrite(servoNum, servoVal);
 
                 printf("Writing %d to servo number %u\n", servoVal, servoNum);
