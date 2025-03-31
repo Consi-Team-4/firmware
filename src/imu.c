@@ -20,7 +20,7 @@
 // Goal is to get time, accelerometer data, and gyroscope data when triggered by interrupt.
 
 
-#define ODR_BITS 0b0111
+#define ODR_BITS 0b0110
 
 #if ODR_BITS == 0b001 // 12.5 Hz
     #define IMU_PERIOD_US 80000
@@ -43,9 +43,9 @@
 
 
 // For calibration purposes
-#define GXOFFS 0.5
-#define GYOFFS -0.9
-#define GZOFFS -0.7
+#define GXOFFS 0
+#define GYOFFS 0
+#define GZOFFS 0
 
 // Got pins from arduino nano rp2040 connect schematic
 #define INT1 24
@@ -311,15 +311,23 @@ static void imuTaskFunc(void *) {
                 printf("IMU read error!\n");
             }
 
-            xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
+            float dt = 0.000001*(imuRaw.micros - prevMicros);
+
             // Find angles of maximum acceleration
+            float decayToPitch = imuX * atan2f(-imuRaw.Ax, -imuRaw.Az);
+            float decayToRoll = imuX * atan2f(-imuRaw.Ay, -imuRaw.Az);
 
-            // float maxAccelRoll = 
+            xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
 
+            imuFiltered.micros = imuRaw.micros;
 
+            imuFiltered.Vpitch = -imuRaw.Gy;
+            imuFiltered.Vroll = imuRaw.Gx;
 
-            // imuFiltered.roll = imu
+            imuFiltered.pitch = decayToPitch + imuAngleHighpass*imuFiltered.pitch + dt*imuFiltered.Vpitch;
+            imuFiltered.roll = decayToPitch + imuAngleHighpass*imuFiltered.roll + dt*imuFiltered.Vroll;
 
+            imuFiltered.Vz = imuLinearHighpass*imuFiltered.Vz + dt*imuRaw.Az;
             
             xSemaphoreGive(imuFilteredMutex);
         }
