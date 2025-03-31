@@ -6,6 +6,8 @@
 #include "hardware/uart.h"
 #include "hardware/irq.h"
 #include "servo.h"
+#include "encoder.h"
+#include "imu.h"
 #include <math.h>
 
 #define LIDAR0_UART uart0
@@ -22,7 +24,6 @@
 
 #define WHEEL_DISTANCE 300                       // millimeters
 #define THETA_LIDAR_NORMALIZATION 0 * M_PI / 180 // base angle of lidar, used for normalization
-#define THETA_IMU 0 * M_PI / 180                 // degrees, angle retrieved from IMU
 #define LIDAR_HEIGHT 284                         // millimeters
 
 static StaticTask_t lidarTaskBuffer;
@@ -91,8 +92,8 @@ void enqueue(Queue *q, int distance, int position)
     {
         q->counter = 0;
     }
-    q->data->lidar_reading[q->counter] = distance;
-    q->data->x_position[q->counter] = position;
+    q->data[q->counter].lidar_reading = distance;
+    q->data[q->counter].x_position = position;
     q->counter++;
     if (q->numPoints < MAX_QUEUE_SIZE)
     {
@@ -107,11 +108,11 @@ void printQueue(Queue *q)
     int count = q->counter;
     for (int i = count; i < MAX_QUEUE_SIZE; i++)
     {
-        printf("%d ", q->data->lidar_reading[i]); // everything after/including the counter
+        printf("%d ", q->data[i].lidar_reading); // everything after/including the counter
     }
     for (int i = 0; i < count; i++)
     {
-        printf("%d ", q->data->lidar_reading[i]); // everything before the counter
+        printf("%d ", q->data[i].lidar_reading); // everything before the counter
     }
     printf("\n");
 }
@@ -136,10 +137,10 @@ double calculate_queue_variance(Queue *q)
 
     while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
     {
-        if (q->data->lidar_reading[i] != 0)
+        if (q->data[i].lidar_reading != 0)
         {
             num_points++;
-            sum += q->data->lidar_reading[i];
+            sum += q->data[i].lidar_reading;
             i--;
         }
     }
@@ -148,10 +149,10 @@ double calculate_queue_variance(Queue *q)
         i = MAX_QUEUE_SIZE - 1;
         while (num_points < RELEVANT_LIDAR_DATA)
         {
-            if (q->data->lidar_reading[i] != 0)
+            if (q->data[i].lidar_reading != 0)
             {
                 num_points++;
-                sum += q->data->lidar_reading[i];
+                sum += q->data[i].lidar_reading;
                 i--;
             }
         }
@@ -164,10 +165,10 @@ double calculate_queue_variance(Queue *q)
 
     while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
     {
-        if (q->data->lidar_reading[i] != 0)
+        if (q->data[i].lidar_reading != 0)
         {
             num_points++;
-            variance += pow(q->data->lidar_reading[i] - mean, 2);
+            variance += pow(q->data[i].lidar_reading - mean, 2);
             i--;
         }
     }
@@ -176,10 +177,10 @@ double calculate_queue_variance(Queue *q)
         i = MAX_QUEUE_SIZE - 1;
         while (num_points < RELEVANT_LIDAR_DATA)
         {
-            if (q->data->lidar_reading[i] != 0)
+            if (q->data[i].lidar_reading != 0)
             {
                 num_points++;
-                variance += pow(q->data->lidar_reading[i] - mean, 2);
+                variance += pow(q->data[i].lidar_reading - mean, 2);
                 i--;
             }
         }
@@ -334,9 +335,13 @@ int mapLidarToServo(int lidarReading)
 
     // }
 
+    imuFiltered_t imuFiltered;
+    imuGetFiltered(&imuFiltered);
+    double theta_imu = imuFiltered.pitch;
+
     // int tiltDistance = LIDAR_HEIGHT * sin(THETA_IMU);
     // int lidarDistance = lidarReading * cos(THETA_LIDAR_NORMALIZATION - THETA_IMU);
-    int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + THETA_IMU);
+    int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + theta_imu);
 
     // get amount of time that we should delay before adjusting front wheels
     int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000);
@@ -402,25 +407,25 @@ static void lidarTaskFunc(void *)
                 if (q_0.counter == 0)
                 {
                     LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[MAX_QUEUE_SIZE - 1]);
+                    data.servo_setting = mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1].lidar_reading);
                 }
                 else
                 {
                     LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[q_0.counter - 1]);
+                    data.servo_setting = mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
                 }
             }
             else if (variance1 > TOLERANCE)
             {
                 if (q_1.counter == 0)
                 {
-                    LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_1.data->lidar_reading[MAX_QUEUE_SIZE - 1]);
+                    LidarData data = peek(&q_1);
+                    data.servo_setting = mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1].lidar_reading);
                 }
                 else
                 {
-                    LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_0.data->lidar_reading[q_1.counter - 1]);
+                    LidarData data = peek(&q_1);
+                    data.servo_setting = mapLidarToServo(q_1.data[q_1.counter - 1].lidar_reading);
                 }
             }
         }
