@@ -25,24 +25,25 @@ int main()
     // Initialize USB Serial
     stdio_init_all();
 
-    // // Delay to give serial time to connect for debugging setup code
-    // uint32_t start_ms = to_ms_since_boot(get_absolute_time());
-    // while (to_ms_since_boot(get_absolute_time()) < start_ms + 1000) {
-    //     printf("Waiting for serial...\n");
-    //     sleep_ms(50);
-    // }
+    // Delay to give serial time to connect for debugging setup code
+    uint32_t start_ms = to_ms_since_boot(get_absolute_time());
+    while (to_ms_since_boot(get_absolute_time()) < start_ms + 2000) {
+        printf("Waiting for serial...\n");
+        sleep_ms(50);
+    }
 
-    // printf("Start ==========================================================================\n");
+    printf("Start ==========================================================================\n");
 
-    // log_init();
-    // log_printf(LOG_INFO, "System startup complete.");
+    log_init();
+    log_printf(LOG_INFO, "System startup complete.");
 
-    imuSetup();
-    lidarSetup();
+    
     encoderSetup();
     servoSetup();
-    consoleSetup();
+    imuSetup();
+    //lidarSetup();
     controllerSetup();
+    consoleSetup();
     heartbeatSetup();
 
     // Wait for red start button pin to be pressed
@@ -63,9 +64,7 @@ int main()
     vTaskStartScheduler();
 
     // Should never hit here
-    while (1)
-    {
-    }
+    while (1) {}
 
     return 0;
 }

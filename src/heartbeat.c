@@ -35,16 +35,19 @@ void heartbeatTaskFunc(void *) {
     float setpoint, integral, output;
 
     imuRaw_t imuRaw;
+    imuFiltered_t imuFiltered;
 
     while (1) {
         encoderRead(&encoderPos, &encoderSpeed);
         encoderReadDebug(&encoderSteps, &encoderSpeed_2_20);
         controllerInfo(&setpoint, &integral, &output);
         imuGetRaw(&imuRaw);
+        imuGetFiltered(&imuFiltered);
+        
 
         //printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
-        printf("Gx: %f7.3 Gy: %f7.3 Gz: %f7.3 Xx: %f7.3 Ay: %f7.3 Ay: %f7.3\n", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
-
+        //printf("Gx: % 7.3f Gy: % 7.3f Gz: % 7.3f Ax: % 7.3f Ay: % 7.3f Az: % 7.3f\n", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
+        printf("pitch: % 7.3f Vpitch: % 7.3f roll: % 7.3f Vroll: % 7.3f Vz: % 7.3f Az: % 7.3f\n", imuFiltered.pitch, imuFiltered.Vpitch, imuFiltered.roll, imuFiltered.Vroll, imuFiltered.Vz, imuRaw.Az);
         // printf(
         //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",
         //     count++,

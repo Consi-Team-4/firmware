@@ -43,9 +43,9 @@
 
 
 // For calibration purposes
-#define GXOFFS 0.5
-#define GYOFFS -0.9
-#define GZOFFS -0.7
+#define GXOFFS 0
+#define GYOFFS 0
+#define GZOFFS 0
 
 // Got pins from arduino nano rp2040 connect schematic
 #define INT1 24
@@ -78,9 +78,11 @@ static float timeConstantToDecayFactor(float timeConstant) { // Time constant in
     return expf(-IMU_PERIOD_US/(1000000 * timeConstant));
 }
 
+// Tuned ish values
+// Can't initialize the decay factors up here because function call :( so initializing them in setup() instead
 static float imuAngleHighpass; // highpass filter on angle integrals
 static float imuLinearHighpass; // highpass filter on linear integrals
-static float imuX; // How much does highpass decay towards 0 (0) or direction of maximum acceleration (1) (presumably due to gravity) ?
+static float imuX = 1; // How much does highpass decay towards 0 (0) or direction of maximum acceleration (1) (presumably due to gravity) ?
 
 
 // Forward declaring internal functions
@@ -98,6 +100,8 @@ static void imuTaskFunc(void *);
 
 
 void imuSetup() {
+    imuAngleHighpass = timeConstantToDecayFactor(0.2);
+    imuLinearHighpass = timeConstantToDecayFactor(0.2);
 
     printf("Setting up SDK I2C...\n");
 
@@ -290,9 +294,9 @@ static void imuTaskFunc(void *) {
                 imuRaw.Gx = data[1] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GXOFFS;
                 imuRaw.Gy = data[2] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GYOFFS;
                 imuRaw.Gz = data[3] * M_PI / 180 * 2000.0 / LSM6DSOX_FSR - GZOFFS;
-                imuRaw.Ax = -data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR;
-                imuRaw.Ay = -data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR;
-                imuRaw.Az = -data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Ax = data[4] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Ay = data[5] * GRAVITY * 4.0 / LSM6DSOX_FSR;
+                imuRaw.Az = data[6] * GRAVITY * 4.0 / LSM6DSOX_FSR;
                 xSemaphoreGive(imuRawMutex);
             }else {
                 // Only update time to avoid issues when filtering IMU data
@@ -311,15 +315,23 @@ static void imuTaskFunc(void *) {
                 printf("IMU read error!\n");
             }
 
-            xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
+            float dt = 0.000001*(imuRaw.micros - prevMicros);
+
             // Find angles of maximum acceleration
+            float decayToPitch = imuX * atan2f(imuRaw.Ax, imuRaw.Az);
+            float decayToRoll = imuX * atan2f(imuRaw.Ay, imuRaw.Az);
 
-            // float maxAccelRoll = 
+            xSemaphoreTake(imuFilteredMutex, portMAX_DELAY);
 
+            imuFiltered.micros = imuRaw.micros;
 
+            imuFiltered.Vpitch = -imuRaw.Gy;
+            imuFiltered.Vroll = imuRaw.Gx;
 
-            // imuFiltered.roll = imu
+            imuFiltered.pitch = (1-imuAngleHighpass)*decayToPitch + imuAngleHighpass*imuFiltered.pitch + dt*imuFiltered.Vpitch;
+            imuFiltered.roll = (1-imuAngleHighpass)*decayToRoll + imuAngleHighpass*imuFiltered.roll + dt*imuFiltered.Vroll;
 
+            imuFiltered.Vz = imuLinearHighpass*imuFiltered.Vz + dt*(imuRaw.Az - GRAVITY*cosf(imuFiltered.pitch)*cosf(imuFiltered.roll));
             
             xSemaphoreGive(imuFilteredMutex);
         }
