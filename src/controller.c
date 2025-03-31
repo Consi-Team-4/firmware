@@ -32,10 +32,11 @@ static float timeConstantToDecayFactor(float timeConstant) { // Time constant in
     return expf(-SERVO_PERIOD_MS/(1000 * timeConstant));
 }
 
-static float suspensionKP;
-static float suspensionKI;
-static float suspensionKD;
-float suspensionHighpass;
+// P and D are tuned. I and highpass are tunedish
+static float suspensionKP = 10000;
+static float suspensionKI = 10000;
+static float suspensionKD = 500;
+float suspensionHighpass; // setting in setup since function call
 typedef struct suspensionData_s {
     ServoID servo;
     float neutralPosition;
@@ -44,13 +45,13 @@ typedef struct suspensionData_s {
 } suspensionData_t;
 
 static suspensionData_t suspensionData[4] = {
-    [SERVO_FR] = { SERVO_FR, -150, 0, 0 },
-    [SERVO_FL] = { SERVO_FL, -150, 0, 0 },
-    [SERVO_BR] = { SERVO_BR, -350, 0, 0 },
-    [SERVO_BL] = { SERVO_BL, -350, 0, 0 },
+    [SERVO_FR] = { SERVO_FR, -300, 0, 0 },
+    [SERVO_FL] = { SERVO_FL, -300, 0, 0 },
+    [SERVO_BR] = { SERVO_BR, -500, 0, 0 },
+    [SERVO_BL] = { SERVO_BL, -500, 0, 0 },
 };
 
-static bool suspensionFeedbackEnable = false;
+static bool suspensionFeedbackEnable = true;
 
 
 const float halfLength = 0.16; //Distance from IMU to center of axle
@@ -69,6 +70,8 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz);
 
 // Functions to call from elsewhere
 void controllerSetup() {
+    suspensionHighpass = timeConstantToDecayFactor(5);
+
     feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(SERVO_PERIOD_MS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
     xTimerStart(feedbackTimer, portMAX_DELAY); 
 }
@@ -128,11 +131,16 @@ void feedback(TimerHandle_t xTimer) {
         imuFiltered_t imuFiltered;
         imuGetFiltered(&imuFiltered);
 
-        
-        // suspensionFeedback(suspensionData+SERVO_FR, dt, z, vz);
-        // suspensionFeedback(suspensionData+SERVO_FL, dt, z, vz);
-        // suspensionFeedback(suspensionData+SERVO_BR, dt, z, vz);
-        // suspensionFeedback(suspensionData+SERVO_BL, dt, z, vz);
+        float zP = halfLength * sinf(imuFiltered.pitch);
+        float zR = halfWidth * sinf(imuFiltered.roll);
+
+        float vzP = halfLength * imuFiltered.Vpitch; // sin(x) = x
+        float vzR = halfWidth * imuFiltered.Vroll; // sin(x) = x
+
+        suspensionFeedback(suspensionData+SERVO_FR, dt,  zP - zR,   imuFiltered.Vz + vzP - vzR);
+        suspensionFeedback(suspensionData+SERVO_FL, dt,  zP + zR,   imuFiltered.Vz + vzP + vzR);
+        suspensionFeedback(suspensionData+SERVO_BR, dt, -zP - zR,   imuFiltered.Vz - vzP - vzR);
+        suspensionFeedback(suspensionData+SERVO_BL, dt, -zP + zR,   imuFiltered.Vz - vzP + vzR);
     }
 }
 
