@@ -44,6 +44,14 @@ static void uart1RxISR(void);
 #include <stdio.h>
 #include <stdlib.h>
 
+/**
+ * Struct to hold data relevant to a point in time when LiDAR data is collected.
+ *
+ * Fields:
+ *  lidar_reading: integer reading returned from LiDAR, representing distance to nearest object at an angle.
+ *  x_position: total x distance covered by the car, returned from the encoder.
+ *  servo_setting: setting that the servos should move to, as determined from solely the LiDAR data (w/o feedback loop)
+ */
 typedef struct
 {
     uint16_t lidar_reading;
@@ -64,36 +72,44 @@ typedef struct
 Queue q_0;
 Queue q_1;
 
-// Function to initialize the queue
+/**
+ * Initializes the queue.
+ */
 void initializeQueue(Queue *q)
 {
-    // q->front = 0;
-    // q->rear = 0;
     q->counter = 0;
     q->numPoints = 0;
 }
 
-// Function to check if the queue is empty
-// bool isEmpty(Queue *q) { return (q->front == q->rear); }
+/**
+ * Checks if the queue is full. This is determined by whether the counter value has already reached the max size of the queue.
+ */
+bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE - 1); }
 
-// Function to check if the queue is full
-bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE); }
-
+/**
+ * Retrieve the LidarData item that was most recently added to the queue
+ */
 LidarData peek(Queue *q)
 {
+    // the counter should be the index that we're NEXT going to put a LidarData struct, so we should grab counter-1 index
     return q->data[q->counter - 1];
 }
 
-// Function to add an element to the queue (Enqueue
-// operation)
+/**
+ * Adds an element of LidarData at the given distance and position to the queue.
+ * If the queue is full, resets the counter to 0 and starts overwriting the data currently in the queue.
+ * This shouldn't lead to any issues with overwritten data, as long as the queue size is sufficiently large for the speed of the vehicle.
+ */
 void enqueue(Queue *q, int distance, int position)
 {
     if (isFull(q))
     {
         q->counter = 0;
     }
+    // put data into queue
     q->data[q->counter].lidar_reading = distance;
     q->data[q->counter].x_position = position;
+    // increment counter
     q->counter++;
     if (q->numPoints < MAX_QUEUE_SIZE)
     {
@@ -101,7 +117,10 @@ void enqueue(Queue *q, int distance, int position)
     }
 }
 
-// Function to print the current queue
+/**
+ * Prints out the current state of the queue.
+ * This implementation prints out just the LiDAR readings, but we can change what field(s) of the LidarData struct we want to print.
+ */
 void printQueue(Queue *q)
 {
     printf("Current Queue: ");
@@ -116,13 +135,10 @@ void printQueue(Queue *q)
     }
     printf("\n");
 }
+
 /**
- * Prints out all of the items in the queue
+ * Calculates variance of the given queue based on the amount of data points that we want to look at at a time (RELEVANT_LIDAR_DATA)
  */
-
-// make queue bigger
-// make queue get actual variance
-
 double calculate_queue_variance(Queue *q)
 {
     int sum = 0, mean, variance = 0;
@@ -163,6 +179,8 @@ double calculate_queue_variance(Queue *q)
     i = q->counter - 1;
     num_points = 0;
 
+    // follow the same pattern of iterating through the queue, but this time accumulate the variance instead of the mean.
+
     while (i >= 0 && num_points < RELEVANT_LIDAR_DATA) // start at counter - 1, go back to 0. will stop at # of points we want to look at, or 0
     {
         if (q->data[i].lidar_reading != 0)
@@ -186,8 +204,6 @@ double calculate_queue_variance(Queue *q)
         }
     }
     variance /= RELEVANT_LIDAR_DATA;
-    // printf("mean: %d, variance: %d", mean, variance);
-
     return variance;
 }
 
@@ -325,6 +341,9 @@ static void uart1RxISR(void)
     portYIELD_FROM_ISR(higherPriorityTaskWoken);
 }
 
+/**
+ * Determines a setting to set the servos to based on a given LiDAR reading.
+ */
 int mapLidarToServo(int lidarReading)
 {
     // get current speed of the car from encoder
@@ -339,13 +358,10 @@ int mapLidarToServo(int lidarReading)
     imuGetFiltered(&imuFiltered);
     double theta_imu = imuFiltered.pitch;
 
-    // int tiltDistance = LIDAR_HEIGHT * sin(THETA_IMU);
-    // int lidarDistance = lidarReading * cos(THETA_LIDAR_NORMALIZATION - THETA_IMU);
     int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + theta_imu);
 
-    // get amount of time that we should delay before adjusting front wheels
     int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000);
-    printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
+    // printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
     return setting;
 }
 
@@ -390,20 +406,16 @@ static void lidarTaskFunc(void *)
         enqueue(&q_1, dist_mm1, encoderPosition);
 
         // calculate variance of this data
-        // double variance0 = sqrt(calculate_queue_variance(&q_0, 10));
-        // DifferenceMetrics Diff0 = calculate_difference(&q_0, 10);
         int variance0 = calculate_queue_variance(&q_0);
         int variance1 = calculate_queue_variance(&q_1);
 
-        // double variance1 = sqrt(calculate_queue_variance(&q_1, 10));
-        // log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm\n", variance0, variance1);
+        log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm\n", variance0, variance1);
 
         if (q_0.numPoints == MAX_QUEUE_SIZE)
-        { // if we have enough data to warrant making changes
-            if (variance0 > TOLERANCE)
+        {                              // if we have enough data to warrant making changes
+            if (variance0 > TOLERANCE) // if the right wheels need to make adjustments
             {
                 // map values to amt for servos to move
-
                 if (q_0.counter == 0)
                 {
                     LidarData data = peek(&q_0);
@@ -415,7 +427,7 @@ static void lidarTaskFunc(void *)
                     data.servo_setting = mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
                 }
             }
-            else if (variance1 > TOLERANCE)
+            else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
             {
                 if (q_1.counter == 0)
                 {
