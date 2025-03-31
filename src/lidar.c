@@ -56,7 +56,8 @@ typedef struct
 {
     uint16_t lidar_reading;
     uint16_t x_position;
-    int servo_setting;
+    int servo_setting_left;
+    int servo_setting_right;
 } LidarData;
 
 typedef struct
@@ -84,7 +85,7 @@ void initializeQueue(Queue *q)
 /**
  * Checks if the queue is full. This is determined by whether the counter value has already reached the max size of the queue.
  */
-bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE - 1); }
+bool isFull(Queue *q) { return (q->counter == MAX_QUEUE_SIZE); }
 
 /**
  * Retrieve the LidarData item that was most recently added to the queue
@@ -360,8 +361,8 @@ int mapLidarToServo(int lidarReading)
 
     int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + theta_imu);
 
-    int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (600 - 250)) + -1000);
-    // printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
+    int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (800 - 250)) + -1000);
+    printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
     return setting;
 }
 
@@ -409,37 +410,41 @@ static void lidarTaskFunc(void *)
         int variance0 = calculate_queue_variance(&q_0);
         int variance1 = calculate_queue_variance(&q_1);
 
-        log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm\n", variance0, variance1);
+        // log_printf(LOG_INFO, "VARIANCE0: %3d cm, VARIANCE1: %3d cm\n", variance0, variance1);
 
         if (q_0.numPoints == MAX_QUEUE_SIZE)
         {                              // if we have enough data to warrant making changes
-            if (variance0 > TOLERANCE) // if the right wheels need to make adjustments
-            {
+            // if (variance0 > TOLERANCE) // if the right wheels need to make adjustments
+            // {
                 // map values to amt for servos to move
                 if (q_0.counter == 0)
                 {
                     LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1].lidar_reading);
+                    data.servo_setting_right= mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1].lidar_reading);
+                    printf("new servo setting: %d\n", data.servo_setting_right);
                 }
                 else
-                {
+                {;
                     LidarData data = peek(&q_0);
-                    data.servo_setting = mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
+                    data.servo_setting_right= mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
+                    printf("new servo setting: %d\n", data.servo_setting_right);
                 }
             }
-            else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
-            {
+            // else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
+            // {
                 if (q_1.counter == 0)
                 {
                     LidarData data = peek(&q_1);
-                    data.servo_setting = mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1].lidar_reading);
+                    data.servo_setting_left= mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1].lidar_reading);
+                    printf("new servo setting: %d\n", data.servo_setting_left);
                 }
                 else
                 {
                     LidarData data = peek(&q_1);
-                    data.servo_setting = mapLidarToServo(q_1.data[q_1.counter - 1].lidar_reading);
+                    data.servo_setting_left= mapLidarToServo(q_1.data[q_1.counter - 1].lidar_reading);
+                    printf("new servo setting: %d\n", data.servo_setting_left);
                 }
-            }
-        }
+            // }
+       //
     }
 }
