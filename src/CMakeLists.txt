@@ -11,6 +11,7 @@ add_executable(${ProjectName}
     simple_encoder_substep.c
     imu.c
     lidar.c
+    bluetooth.c
 
     # Tasks: Active components
     console.c
@@ -21,6 +22,8 @@ add_executable(${ProjectName}
     log.c
     debug.c
     freeRTOSHelpers.c
+
+    
 )
 
 # PIO header generation (adjust if you're using more .pio files)

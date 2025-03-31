@@ -16,6 +16,7 @@
 #include "lidar.h"
 #include "console.h"
 #include "controller.h"
+#include "bluetooth.h"
 
 const uint startButtonPin = 18; // Pin D6
 
@@ -32,12 +33,16 @@ int main()
         sleep_ms(50);
     }
 
+    //bluetoothSetup();
+
     printf("Start ==========================================================================\n");
 
     log_init();
     log_printf(LOG_INFO, "System startup complete.");
 
     
+
+
     encoderSetup();
     servoSetup();
     imuSetup();
