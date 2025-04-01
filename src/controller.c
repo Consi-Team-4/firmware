@@ -96,8 +96,8 @@ void escSetSetpoint(float setpoint) {
 
 void escEnable(bool enable) {
     escFeedbackEnable = enable;
-    escIntegral = 0;
 }
+
 
 void suspensionSetK(float KP, float KI, float KD, float highpassTau) {
     for (int i = 0; i < 4; i++) {
@@ -109,6 +109,11 @@ void suspensionSetK(float KP, float KI, float KD, float highpassTau) {
     suspensionHighpass = timeConstantToDecayFactor(highpassTau);
 }
 
+void suspensionEnable(bool enable) {
+    suspensionFeedbackEnable = enable;
+}
+
+
 void suspensionLidarSetK(float KP) {
     lidarKP = KP;
 }
@@ -117,12 +122,8 @@ void suspensionLidarEnable(bool enable) {
     lidarFeedbackEnable = enable;
 }
 
-void suspensionEnable(bool enable) {
-    suspensionFeedbackEnable = enable;
-    for (int i = 0; i < 4; i++) {
-        suspensionData[i].integral = 0;
-    }
-}
+
+
 
 void feedback(TimerHandle_t xTimer) {
     uint64_t nowMicros = to_us_since_boot(get_absolute_time());

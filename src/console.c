@@ -2,6 +2,7 @@
 
 #include "FreeRTOS.h"
 #include "task.h"
+#include "timers.h"
 
 #include "pico/stdlib.h"
 #include <stdio.h>
@@ -13,6 +14,11 @@
 #include "imu.h"
 
 
+#define DRIVE_TIMEOUT_US 100000
+static uint64_t lastDriveUS;
+
+static StaticTimer_t driveTimerBuffer;
+TimerHandle_t driveTimer;
 
 static StaticTask_t consoleTaskBuffer;
 static StackType_t consoleStackBuffer[1000];
@@ -20,9 +26,13 @@ TaskHandle_t consoleTask;
 
 
 void consoleTaskFunc(void *);
+void driveWatchdog(TimerHandle_t xTimer);
 
 void consoleSetup() {
     consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 2, consoleStackBuffer, &consoleTaskBuffer);
+
+    driveTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(10), pdTRUE, NULL, driveWatchdog, &driveTimerBuffer);
+    // timer is started by an MD command
 }
 
 void consoleTaskFunc(void *) {
@@ -54,6 +64,20 @@ void consoleTaskFunc(void *) {
         consoleRunCommand(input);
     }
 }
+
+
+void driveWatchdog(TimerHandle_t xTimer) {
+    uint64_t currentUS = to_us_since_boot(get_absolute_time());
+    if (currentUS > lastDriveUS + DRIVE_TIMEOUT_US) {
+        xTimerStop(driveTimer, portMAX_DELAY);
+
+        // Stop the fucking car
+        escEnable(false);
+        servoWrite(ESC, 0);
+        servowrite(SERVO_STEER, 0);
+    }
+}
+
 
 void consoleRunCommand(char *input) {
     switch (input[0]) {        
@@ -336,6 +360,42 @@ void consoleRunCommand(char *input) {
                     servoWrite(SERVO_STEER, position);
 
                     printf("Setting steering position to %d", position);
+                    break;
+                }
+
+                case 'D': { // Drive - take both a throttle and a steering input with watchdog
+                    // MD <throttle> <steering>
+                    // throttle between 1800 and -1000 (uses feedback if positive, doesn't if negative)
+                    // steering between 300 and -300
+                    char *next;
+                    char *start = input+2;
+
+                    int intThrottle = strtol(start, &next, 10);
+                    if (next == start) { // Conversion failed
+                        printf ("Invalid throttle\n");
+                        break;
+                    }
+                    start = next;
+
+                    int steering = strtol(start, &next, 10);
+                    if (next == start) { // Conversion failed
+                        printf ("Invalid steering\n");
+                        break;
+                    }
+                    start = next;
+
+                    servoWrite(SERVO_STEER, steering);
+
+                    if (intThrottle > 0) {
+                        escEnable(true);
+                        escSetSetpoint(intThrottle / 1000.0);
+                    } else {
+                        escEnable(false);
+                        servoWrite(ESC, intThrottle);
+                    }
+
+                    lastDriveUS = to_us_since_boot(get_absolute_time());
+                    xTimerStart(driveTimer, portMAX_DELAY);
                     break;
                 }
 
