@@ -52,7 +52,7 @@ void consoleTaskFunc(void *) {
             }
         }
         
-        consoleRunCommand(&input);
+        consoleRunCommand(input);
     }
 }
 

@@ -35,12 +35,8 @@ int main()
 
     printf("Start ==========================================================================\n");
 
-    log_init();
-    log_printf(LOG_INFO, "System startup complete.");
 
-    
-    //bluetoothSetup();
-
+    bluetoothSetup();
     encoderSetup();
     servoSetup();
     imuSetup();
