@@ -53,12 +53,15 @@ void bluetoothSetup(void) {
 
 
 static void blueToothIrqCallback(void) {
+    BaseType_t higherPriorityTaskWoken = 0;
+
     while(!pio_sm_is_rx_fifo_empty(pio, sm)) {
         char c = uart_rx_program_getc(pio, sm);
         
         if (c == '\n' || c == '\r') {
             input[i < sizeof(input) ? i : sizeof(input)-1] = '\0';  // Null-terminate
-            // Notify task func and disable interrupt
+            // Disable interrupt
+            vTaskNotifyGiveFromISR(bluetoothTask, &higherPriorityTaskWoken); // Notify task
             break;
         }
         
@@ -67,12 +70,14 @@ static void blueToothIrqCallback(void) {
             i++;
         }
     }
+
+    portYIELD_FROM_ISR( &higherPriorityTaskWoken );
 }
 
 
 static void bluetoothTaskFunc(void *) {
     while (true) {
-        ulTaskNotifyTake(true, portMAX_DELAY);
+        ulTaskNotifyTake(true, portMAX_DELAY); // Wait for task to be notified from ISR
         
         consoleRunCommand(input);
 
