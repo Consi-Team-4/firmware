@@ -35,12 +35,7 @@ int main()
 
     printf("Start ==========================================================================\n");
 
-
-<<<<<<< HEAD
     printf("Entering encoder setup!");
-=======
-    bluetoothSetup();
->>>>>>> bluetooth
     encoderSetup();
     printf("Entering servo setup!");
     servoSetup();
@@ -50,6 +45,8 @@ int main()
     lidarSetup();
     printf("Entering controller setup!");
     controllerSetup();
+    printf("Entering bluetooth setup!");
+    bluetoothSetup();
     printf("Entering console setup!");
     consoleSetup();
     printf("Entering heartbeat setup!");
