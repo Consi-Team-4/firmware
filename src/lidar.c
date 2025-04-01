@@ -198,54 +198,36 @@ double calculate_queue_variance(Queue *q)
     return variance;
 }
 
-void lidar0Setup()
+void lidarInstSetup(uart_inst_t *uartInst, uint txPin, uint rxPin, void(*isrFunc)(void) )
 {
     // initialize queue for lidar data to be fed into
 
     initializeQueue(&q_0);
 
-    uart_init(LIDAR0_UART, LIDAR_BAUDRATE);
-    gpio_set_function(LIDAR0_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(LIDAR0_RX_PIN, GPIO_FUNC_UART);
-    uart_set_hw_flow(LIDAR0_UART, false, false);
-    uart_set_format(LIDAR0_UART, 8, 1, UART_PARITY_NONE);
-    uart_set_fifo_enabled(LIDAR0_UART, false);
-
-    irq_set_exclusive_handler(UART0_IRQ, uart0RxISR);
-    irq_set_enabled(UART0_IRQ, true);
-    uart_set_irq_enables(LIDAR0_UART, true, false); // RX interrupt only
-}
-
-void lidar1Setup()
-{
-    // initialize queue for lidar data to be fed into
-    initializeQueue(&q_1);
-
-    uart_init(LIDAR1_UART, LIDAR_BAUDRATE);
-    gpio_set_function(LIDAR1_TX_PIN, GPIO_FUNC_UART);
-    gpio_set_function(LIDAR1_RX_PIN, GPIO_FUNC_UART);
-    uart_set_hw_flow(LIDAR1_UART, false, false);
-    uart_set_format(LIDAR1_UART, 8, 1, UART_PARITY_NONE);
-    uart_set_fifo_enabled(LIDAR1_UART, false);
-
-    irq_set_exclusive_handler(UART1_IRQ, uart1RxISR);
-    irq_set_enabled(UART1_IRQ, true);
-    uart_set_irq_enables(LIDAR1_UART, true, false); // RX interrupt only
+    uart_init(uartInst, LIDAR_BAUDRATE);
+    gpio_set_function(txPin, GPIO_FUNC_UART);
+    gpio_set_function(rxPin, GPIO_FUNC_UART);
+    uart_set_hw_flow(uartInst, false, false);
+    uart_set_format(uartInst, 8, 1, UART_PARITY_NONE);
+    uart_set_fifo_enabled(uartInst, false);
+    irq_set_exclusive_handler(UART_IRQ_NUM(uartInst), isrFunc);
+    irq_set_enabled(UART_IRQ_NUM(uartInst), true);
+    uart_set_irq_enables(uartInst, true, false); // RX interrupt only
 }
 
 void lidarSetup()
 {
     // set up both of the lidars and the queues to hold their data
-    lidar0Setup();
-    lidar1Setup();
+    lidarInstSetup(LIDAR0_UART, LIDAR0_TX_PIN, LIDAR0_RX_PIN, &uart0RxISR);
+    lidarInstSetup(LIDAR1_UART, LIDAR1_TX_PIN, LIDAR1_RX_PIN, &uart1RxISR);
 
     lidarTask = xTaskCreateStatic(
         lidarTaskFunc, "lidarTask",
         sizeof(lidarStackBuffer) / sizeof(StackType_t),
-        NULL, 4,
+        NULL, 3,
         lidarStackBuffer, &lidarTaskBuffer);
 
-    log_printf(LOG_INFO, "TFmini-S LIDAR initialized on UART0 (GPIO %d/%d)", LIDAR0_TX_PIN, LIDAR0_RX_PIN);
+    log_printf(LOG_INFO, "TFmini-S LIDARs initialized.\n");
 }
 
 static void uart0RxISR(void)
@@ -352,7 +334,7 @@ int mapLidarToServo(int lidarReading)
     int normalizedDistance = lidarReading / cos(THETA_LIDAR_NORMALIZATION + theta_imu);
 
     int setting = -(((normalizedDistance - 250) * (1000 + 1000) / (800 - 250)) + -1000);
-    printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
+    // printf("setting: %d, normalized distance: %d\n", setting, normalizedDistance);
     return setting;
 }
 
@@ -440,8 +422,8 @@ static void lidarTaskFunc(void *)
                 suspensionData_t suspensionDataBack = {(ServoID)2, -500, 0, servo_setting_num};
 
                 // call feedback function to send this lidar data over
-                suspensionFeedback(&suspensionDataFront, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidar);
-                suspensionFeedback(&suspensionDataBack, dt, -zP - zR, imuFiltered.Vz - vzP - vzR, lidar);
+                // suspensionFeedback(&suspensionDataFront, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidar);
+                // suspensionFeedback(&suspensionDataBack, dt, -zP - zR, imuFiltered.Vz - vzP - vzR, lidar);
             }
             else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
             {
@@ -478,8 +460,8 @@ static void lidarTaskFunc(void *)
                 suspensionData_t suspensionDataBack = {(ServoID)3, -500, 0, servo_setting_num};
 
                 // call feedback function to send this lidar data over
-                suspensionFeedback(&suspensionDataFront, dt, zP + zR, imuFiltered.Vz + vzP + vzR, lidar);
-                suspensionFeedback(&suspensionDataBack, dt, -zP + zR, imuFiltered.Vz - vzP + vzR, lidar);
+                // suspensionFeedback(&suspensionDataFront, dt, zP + zR, imuFiltered.Vz + vzP + vzR, lidar);
+                // suspensionFeedback(&suspensionDataBack, dt, -zP + zR, imuFiltered.Vz - vzP + vzR, lidar);
             }
         }
     }

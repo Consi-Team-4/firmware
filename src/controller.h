@@ -30,6 +30,5 @@ void escEnable(bool enable);
 
 void suspensionSetK(float KP, float KI, float KD, float highpassTau);
 void suspensionEnable(bool enable);
-void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz, LidarData lidarData);
 
 #endif

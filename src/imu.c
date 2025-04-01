@@ -160,7 +160,7 @@ void imuSetup() {
 
 
     printf("Creating Task...\n");
-    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 4, imuStackBuffer, &imuTaskBuffer);
+    imuTask = xTaskCreateStatic(imuTaskFunc, "imuTask", sizeof(imuStackBuffer)/sizeof(StackType_t), NULL, 3, imuStackBuffer, &imuTaskBuffer);
 
     printf("Creating Mutex...\n");
     imuRawMutex = xSemaphoreCreateMutexStatic(&imuRawMutexBuffer);

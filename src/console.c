@@ -22,7 +22,7 @@ TaskHandle_t consoleTask;
 void consoleTaskFunc(void *);
 
 void consoleSetup() {
-    consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 1, consoleStackBuffer, &consoleTaskBuffer);
+    consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 2, consoleStackBuffer, &consoleTaskBuffer);
 }
 
 void consoleTaskFunc(void *) {

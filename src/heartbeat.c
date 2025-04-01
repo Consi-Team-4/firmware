@@ -23,7 +23,7 @@ TaskHandle_t heartbeatTask;
 void heartbeatTaskFunc(void *);
 
 void heartbeatSetup() {
-    heartbeatTask = xTaskCreateStatic(heartbeatTaskFunc, "heartbeat", sizeof(heartbeatStackBuffer)/sizeof(StackType_t), NULL, 2, heartbeatStackBuffer, &heartbeatTaskBuffer);
+    heartbeatTask = xTaskCreateStatic(heartbeatTaskFunc, "heartbeat", sizeof(heartbeatStackBuffer)/sizeof(StackType_t), NULL, 1, heartbeatStackBuffer, &heartbeatTaskBuffer);
 }
 
 // Heartbeat Task Implementation
