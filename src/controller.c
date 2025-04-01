@@ -34,7 +34,7 @@ static float timeConstantToDecayFactor(float timeConstant)
 // P and D are tuned. I and highpass are tunedish
 static float suspensionKP = 10000;
 static float suspensionKI = 10000;
-static float suspensionKD = 500;
+static float suspensionKD = 800;
 float suspensionHighpass; // setting in setup since function call
 
 static bool suspensionFeedbackEnable = true;
