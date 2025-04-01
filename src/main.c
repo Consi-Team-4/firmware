@@ -41,7 +41,7 @@ int main()
     encoderSetup();
     servoSetup();
     imuSetup();
-    //lidarSetup();
+    lidarSetup();
     controllerSetup();
     consoleSetup();
     heartbeatSetup();

@@ -13,8 +13,23 @@ void lidarSetup();
  */
 typedef struct
 {
-    int lidar_reading;
-    int x_position;
-} LidarData;
+    float z;
+    float x;
+} LidarData_t;
+
+
+#define MAX_QUEUE_SIZE 2048
+typedef struct
+{
+    LidarData_t data[MAX_QUEUE_SIZE];
+    // int front;
+    // int rear;
+    // int size;
+    int counter;
+    int numPoints;
+} LidarQueue_t;
+
+LidarQueue_t *lidarGetQueue0();
+LidarQueue_t *lidarGetQueue1();
 
 #endif

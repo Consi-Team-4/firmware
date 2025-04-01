@@ -12,6 +12,7 @@
 #include "servo.h"
 #include "encoder.h"
 #include "imu.h"
+#include "lidar.h"
 
 static uint64_t lastMicros;
 
@@ -43,6 +44,21 @@ const float halfLength = 0.16; //Distance from IMU to center of axle
 const float halfWidth = 0.06; // Distance from center of axel to wheel
 
 
+static bool lidarFeedbackEnable = true;
+
+static LidarQueue_t *q_0; // Right side
+uint indexFR;
+uint indexBR;
+
+static LidarQueue_t *q_1; // Left side
+uint indexFL;
+uint indexBL;
+
+float lidarKP = 5000;
+
+const float lidarOffset = 0.040;
+
+
 static StaticTimer_t feedbackTimerBuffer;
 TimerHandle_t feedbackTimer;
 
@@ -54,6 +70,9 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz, flo
 // Functions to call from elsewhere
 void controllerSetup() {
     suspensionHighpass = timeConstantToDecayFactor(5);
+
+    q_0 = lidarGetQueue0();
+    q_1 = lidarGetQueue1();
 
     feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(SERVO_PERIOD_MS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
     xTimerStart(feedbackTimer, portMAX_DELAY);
@@ -102,9 +121,10 @@ void feedback(TimerHandle_t xTimer) {
     float dt = (nowMicros - lastMicros) / 1000000.0; // Convert to milliseconds
     lastMicros = nowMicros;
 
-    if (escFeedbackEnable) {
-        float encoderPosition, encoderSpeed;
+    float encoderPosition, encoderSpeed;
         encoderRead(&encoderPosition, &encoderSpeed);
+
+    if (escFeedbackEnable) {
         escFeedback(dt, encoderSpeed);
     }
 
@@ -118,15 +138,43 @@ void feedback(TimerHandle_t xTimer) {
         float vzP = halfLength * imuFiltered.Vpitch; // sin(x) = x
         float vzR = halfWidth * imuFiltered.Vroll;   // sin(x) = x
 
-        float lidarz = 0;
-        // if (lidarFeedbackEnable) {
-        //     LidarData lidarData;
-        // }
+        float lidarzFR = 0;
+        float lidarzFL = 0;
+        float lidarzBR = 0;
+        float lidarzBL = 0;
+        if (lidarFeedbackEnable) {
+            float frontX = encoderPosition - lidarOffset;
+            float backX = frontX - 2*halfLength;
 
-        suspensionFeedback(suspensionData + SERVO_FR, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidarz);
-        suspensionFeedback(suspensionData + SERVO_FL, dt, zP + zR, imuFiltered.Vz + vzP + vzR, lidarz);
-        suspensionFeedback(suspensionData + SERVO_BR, dt, -zP - zR, imuFiltered.Vz - vzP - vzR, lidarz);
-        suspensionFeedback(suspensionData + SERVO_BL, dt, -zP + zR, imuFiltered.Vz - vzP + vzR, lidarz);
+            while (q_0->data[indexFR].x < frontX) {
+                indexFR++;
+                if (indexFR >= MAX_QUEUE_SIZE) { indexFR = 0; }
+            }
+            lidarzFR = q_0->data[indexFR].z;
+
+            while (q_1->data[indexFL].x < frontX) {
+                indexFL++;
+                if (indexFL >= MAX_QUEUE_SIZE) { indexFL = 0; }
+            }
+            lidarzFL = q_1->data[indexFL].z;
+
+            while (q_0->data[indexBR].x < backX) {
+                indexBR++;
+                if (indexBR >= MAX_QUEUE_SIZE) { indexBR = 0; }
+            }
+            lidarzBR = q_0->data[indexBR].z;
+
+            while (q_1->data[indexBL].x < backX) {
+                indexBL++;
+                if (indexBL >= MAX_QUEUE_SIZE) { indexBL = 0; }
+            }
+            lidarzBL = q_1->data[indexBL].z;
+        }
+
+        suspensionFeedback(suspensionData + SERVO_FR, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidarzFR);
+        suspensionFeedback(suspensionData + SERVO_FL, dt, zP + zR, imuFiltered.Vz + vzP + vzR, lidarzFL);
+        suspensionFeedback(suspensionData + SERVO_BR, dt, -zP - zR, imuFiltered.Vz - vzP - vzR, lidarzBR);
+        suspensionFeedback(suspensionData + SERVO_BL, dt, -zP + zR, imuFiltered.Vz - vzP + vzR, lidarzBL);
     }
 }
 
@@ -168,7 +216,7 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz, flo
     if (data->integral > maxIntegral) { data->integral = maxIntegral; }
     if (data->integral < minIntegral) { data->integral = minIntegral; }
 
-    data->output = data->neutralPosition + suspensionKP * (-z) + data->integral + suspensionKD * (-vz);
+    data->output = data->neutralPosition - lidarKP*lidarz + suspensionKP * (-z) + data->integral + suspensionKD * (-vz);
 
     if (data->output > limits.maxPosition){ data->output = limits.maxPosition; }
     else if (data->output < limits.minPosition) { data->output = limits.minPosition; }
