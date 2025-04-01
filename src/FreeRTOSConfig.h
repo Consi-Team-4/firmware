@@ -95,7 +95,7 @@
  
  /* Software timer related definitions. */
  #define configUSE_TIMERS                        1
- #define configTIMER_TASK_PRIORITY               ( configMAX_PRIORITIES - 1 )
+ #define configTIMER_TASK_PRIORITY               ( configMAX_PRIORITIES - 2 )
  #define configTIMER_QUEUE_LENGTH                10
  #define configTIMER_TASK_STACK_DEPTH            1024
  
@@ -109,7 +109,7 @@
  /* SMP port only */
  #define configNUM_CORES                         2
  #define configTICK_CORE                         0
- #define configRUN_MULTIPLE_PRIORITIES           0
+ #define configRUN_MULTIPLE_PRIORITIES           1
  
  /* RP2040 specific */
  #define configSUPPORT_PICO_SYNC_INTEROP         1

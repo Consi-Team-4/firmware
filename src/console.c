@@ -22,7 +22,7 @@ TaskHandle_t consoleTask;
 void consoleTaskFunc(void *);
 
 void consoleSetup() {
-    consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 1, consoleStackBuffer, &consoleTaskBuffer);
+    consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 2, consoleStackBuffer, &consoleTaskBuffer);
 }
 
 void consoleTaskFunc(void *) {
@@ -35,7 +35,7 @@ void consoleTaskFunc(void *) {
         while (true) {
             int c = getchar_timeout_us(0);  // Non-blocking read
             if (c == PICO_ERROR_TIMEOUT) {
-                vTaskDelay(pdMS_TO_TICKS(10));  // Small delay
+                vTaskDelay(pdMS_TO_TICKS(1));  // Small delay
                 continue;
             }
 

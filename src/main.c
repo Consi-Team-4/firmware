@@ -33,15 +33,13 @@ int main()
         sleep_ms(50);
     }
 
-    //bluetoothSetup();
-
     printf("Start ==========================================================================\n");
 
     log_init();
     log_printf(LOG_INFO, "System startup complete.");
 
     
-
+    //bluetoothSetup();
 
     encoderSetup();
     servoSetup();
