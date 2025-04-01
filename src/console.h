@@ -3,4 +3,6 @@
 
 void consoleSetup();
 
+void consoleRunCommand(char *input);
+
 #endif
