@@ -74,7 +74,7 @@ void driveWatchdog(TimerHandle_t xTimer) {
         // Stop the fucking car
         escEnable(false);
         servoWrite(ESC, 0);
-        servowrite(SERVO_STEER, 0);
+        servoWrite(SERVO_STEER, 0);
     }
 }
 
