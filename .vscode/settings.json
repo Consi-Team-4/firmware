@@ -66,6 +66,11 @@
         "encoder.h": "c",
         "irq.h": "c",
         "console.h": "c",
-        "numeric": "c"
+        "numeric": "c",
+        "imu.h": "c",
+        "log.h": "c",
+        "string": "c",
+        "string_view": "c",
+        "span": "c"
     }
 }

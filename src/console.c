@@ -132,7 +132,7 @@ void consoleTaskFunc(void *) {
                         char *start = input+2;
 
                         int servoNum = strtol(start, &next, 10);
-                        if (next == start || servoNum < 0 || servoNum >= SERVO_COUNT) { // Conversion failed
+                        if (next == start || servoNum < 0 || servoNum >= 4) { // Conversion failed
                             printf ("Invalid servo number\n");
                             break;
                         }
@@ -140,6 +140,7 @@ void consoleTaskFunc(void *) {
 
                         int servoVal = strtol(next, NULL, 10);
 
+                        suspensionEnable(false);
                         servoWrite(servoNum, servoVal);
 
                         printf("Writing %d to servo number %u\n", servoVal, servoNum);
@@ -266,6 +267,61 @@ void consoleTaskFunc(void *) {
                     default: if (input[1]) { printf("Unknown command S%c", input[1]); }
                 }
                 break;
+            }
+
+            case 'L': { // Lidar commands
+                switch(input[1]) {
+                    case 'K': { // LK - Set Lidar feedback parameters
+                        // LK <Tau> <KP> <Power>
+                        // Tau is in ms
+                        char *next;
+                        char *start = input+2;
+
+                        int intTau = strtol(start, &next, 10);
+                        if (next == start) { // Conversion failed
+                            printf ("Invalid Tau\n");
+                            break;
+                        }
+                        start = next;
+
+                        int intKP = strtol(start, &next, 10);
+                        if (next == start) { // Conversion failed
+                            printf ("Invalid KP\n");
+                            break;
+                        }
+                        start = next;
+
+                        int power = strtol(start, &next, 10);
+                        if (next == start) { // Conversion failed
+                            printf ("Invalid Power\n");
+                            break;
+                        }
+                        start = next;
+                        
+                        float tau = intTau / 1000.0; // Convert from ms to seconds
+                        float e = powf(10.0, power);
+                        float KP = intKP * e;
+                        lidarSetK(tau);
+                        suspensionLidarSetK(KP);
+
+                        printf("Setting lidar Tau=%f, KP=%f\n", tau, KP);
+                        break;
+                    }
+
+                    case 'F': { // EF - Enable/Disable Lidar feedback
+                        // LF <enable>
+                        // <enable> should be 0 for false, 1 for true
+                        int enable = strtol(input+2, NULL, 10);
+
+                        suspensionLidarEnable(enable);
+
+                        if (enable) { printf("Enabling lidar feedback\n"); }
+                        else { printf("Disabling lidar feedback\n"); }
+                        break;
+                    }
+
+                    default: if (input[1]) { printf("Unknown command S%c", input[1]); }
+                }
             }
             
             case 'M': { // Misc

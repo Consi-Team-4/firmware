@@ -46,11 +46,11 @@ const float halfWidth = 0.06; // Distance from center of axel to wheel
 
 static bool lidarFeedbackEnable = true;
 
-static LidarQueue_t *q_0; // Right side
+static LidarQueue_t *qR; // Right side
 uint indexFR;
 uint indexBR;
 
-static LidarQueue_t *q_1; // Left side
+static LidarQueue_t *qL; // Left side
 uint indexFL;
 uint indexBL;
 
@@ -71,8 +71,8 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz, flo
 void controllerSetup() {
     suspensionHighpass = timeConstantToDecayFactor(5);
 
-    q_0 = lidarGetQueue0();
-    q_1 = lidarGetQueue1();
+    qR = lidarGetQueueR();
+    qL = lidarGetQueueL();
 
     feedbackTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(SERVO_PERIOD_MS), pdTRUE, NULL, feedback, &feedbackTimerBuffer);
     xTimerStart(feedbackTimer, portMAX_DELAY);
@@ -107,6 +107,14 @@ void suspensionSetK(float KP, float KI, float KD, float highpassTau) {
     suspensionKI = KI;
     suspensionKD = KD;
     suspensionHighpass = timeConstantToDecayFactor(highpassTau);
+}
+
+void suspensionLidarSetK(float KP) {
+    lidarKP = KP;
+}
+
+void suspensionLidarEnable(bool enable) {
+    lidarFeedbackEnable = enable;
 }
 
 void suspensionEnable(bool enable) {
@@ -146,29 +154,29 @@ void feedback(TimerHandle_t xTimer) {
             float frontX = encoderPosition - lidarOffset;
             float backX = frontX - 2*halfLength;
 
-            while (q_0->data[indexFR].x < frontX) {
+            while (qR->data[indexFR].x < frontX) {
                 indexFR++;
-                if (indexFR >= MAX_QUEUE_SIZE) { indexFR = 0; }
+                if (indexFR >= LIDAR_QUEUE_LEN) { indexFR = 0; }
             }
-            lidarzFR = q_0->data[indexFR].z;
+            lidarzFR = qR->data[indexFR].z;
 
-            while (q_1->data[indexFL].x < frontX) {
+            while (qL->data[indexFL].x < frontX) {
                 indexFL++;
-                if (indexFL >= MAX_QUEUE_SIZE) { indexFL = 0; }
+                if (indexFL >= LIDAR_QUEUE_LEN) { indexFL = 0; }
             }
-            lidarzFL = q_1->data[indexFL].z;
+            lidarzFL = qL->data[indexFL].z;
 
-            while (q_0->data[indexBR].x < backX) {
+            while (qR->data[indexBR].x < backX) {
                 indexBR++;
-                if (indexBR >= MAX_QUEUE_SIZE) { indexBR = 0; }
+                if (indexBR >= LIDAR_QUEUE_LEN) { indexBR = 0; }
             }
-            lidarzBR = q_0->data[indexBR].z;
+            lidarzBR = qR->data[indexBR].z;
 
-            while (q_1->data[indexBL].x < backX) {
+            while (qL->data[indexBL].x < backX) {
                 indexBL++;
-                if (indexBL >= MAX_QUEUE_SIZE) { indexBL = 0; }
+                if (indexBL >= LIDAR_QUEUE_LEN) { indexBL = 0; }
             }
-            lidarzBL = q_1->data[indexBL].z;
+            lidarzBL = qL->data[indexBL].z;
         }
 
         suspensionFeedback(suspensionData + SERVO_FR, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidarzFR);

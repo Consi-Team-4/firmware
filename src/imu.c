@@ -20,7 +20,7 @@
 // Goal is to get time, accelerometer data, and gyroscope data when triggered by interrupt.
 
 
-#define ODR_BITS 0b0111
+#define ODR_BITS 0b0110
 
 #if ODR_BITS == 0b001 // 12.5 Hz
     #define IMU_PERIOD_US 80000

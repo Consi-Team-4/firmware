@@ -18,18 +18,16 @@ typedef struct
 } LidarData_t;
 
 
-#define MAX_QUEUE_SIZE 2048
+#define LIDAR_QUEUE_LEN 2048
 typedef struct
 {
-    LidarData_t data[MAX_QUEUE_SIZE];
-    // int front;
-    // int rear;
-    // int size;
-    int counter;
-    int numPoints;
+    LidarData_t data[LIDAR_QUEUE_LEN];
+    int writeIndex;
 } LidarQueue_t;
 
-LidarQueue_t *lidarGetQueue0();
-LidarQueue_t *lidarGetQueue1();
+LidarQueue_t *lidarGetQueueR();
+LidarQueue_t *lidarGetQueueL();
+
+void lidarSetK(float highpassTau);
 
 #endif

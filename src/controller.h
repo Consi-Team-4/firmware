@@ -31,4 +31,7 @@ void escEnable(bool enable);
 void suspensionSetK(float KP, float KI, float KD, float highpassTau);
 void suspensionEnable(bool enable);
 
+void suspensionLidarSetK(float KP);
+void suspensionLidarEnable(bool enable);
+
 #endif
