@@ -5,6 +5,7 @@
 #include "pico/stdlib.h"
 #include "hardware/pio.h"
 #include "uart_rx.pio.h"
+#include "console.h"
 
 // #define UART0_TX_PIN 0    // GPIO 0 → Connect to HC-05 RXD
 #define RX_PIN 1    // GPIO 1 → Connect to HC-05 TXD
@@ -16,12 +17,11 @@
 // That way, commands here can get handled the same way
 // (Probably also worth adding a command to handle both throttle and steering in one command so that we don't need to send as many messages)
 
-const PIO pio = pio1;
-const uint sm = 0;
+static const PIO pio = pio1;
+static const uint sm = 0;
 
-static char inputBuffer[64];
-static uint8_t write_index;
-static uint8_t cobs_counter;
+static char input[64];
+static volatile uint i;
 
 
 static StaticTask_t bluetoothTaskBuffer;
@@ -43,6 +43,8 @@ void bluetoothSetup(void) {
     uart_rx_program_init(pio, sm, offset, RX_PIN, BAUD_RATE);
     
     printf("HC-05 Bluetooth module initialized on pio uart\n");
+
+    // Enable interrupt
     
     // Create FreeRTOS task
     bluetoothTask = xTaskCreateStatic(bluetoothTaskFunc, "bluetooth", sizeof(bluetoothStackBuffer)/sizeof(StackType_t), NULL, 2, bluetoothStackBuffer, &bluetoothTaskBuffer);
@@ -54,39 +56,28 @@ static void blueToothIrqCallback(void) {
     while(!pio_sm_is_rx_fifo_empty(pio, sm)) {
         char c = uart_rx_program_getc(pio, sm);
         
-      
+        if (c == '\n' || c == '\r') {
+            input[i < sizeof(input) ? i : sizeof(input)-1] = '\0';  // Null-terminate
+            // Notify task func and disable interrupt
+            break;
+        }
         
+        if (i < sizeof(input) - 1) {
+            input[i] = (char)c;
+            i++;
+        }
     }
 }
 
 
 static void bluetoothTaskFunc(void *) {
-    char input[64];
-
     while (true) {
-        char *p_write = input;
-
-        while (true) {
-            while(pio_sm_is_rx_fifo_empty(pio, sm)) {
-                vTaskDelay(pdMS_TO_TICKS(1))
-            }
-            char c = uart_rx_program_getc(pio, sm);
-            /
-            
+        ulTaskNotifyTake(true, portMAX_DELAY);
         
-        
-            if (c == '\n' || c == '\r') {
-                input[i < sizeof(input) ? i : sizeof(input)-1] = '\0';  // Null-terminate
-                putchar('\n');
-                break;
-            }
+        consoleRunCommand(input);
 
-            if (i < sizeof(input) - 1) {
-                input[i] = (char)c;
-                i++;
-                putchar(c);  // Echo back the input
-            }
-        }
-        }
+        // Reset
+        i = 0;
+        // Re enable interrupt
     }
 }
