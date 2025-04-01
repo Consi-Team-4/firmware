@@ -1,5 +1,6 @@
 #include "lidar.h"
 #include "FreeRTOS.h"
+#include "controller.h"
 #include "task.h"
 #include "log.h"
 #include "pico/stdlib.h"
@@ -36,6 +37,9 @@ static volatile uint8_t lidar0Index = 0;
 static volatile uint8_t lidar1Buffer[9];
 static volatile uint8_t lidar1Index = 0;
 
+const float halfL = 0.16; // Distance from IMU to center of axle
+const float halfW = 0.06; // Distance from center of axel to wheel
+
 // Forward declarations
 static void lidarTaskFunc(void *);
 static void uart0RxISR(void);
@@ -43,22 +47,6 @@ static void uart1RxISR(void);
 
 #include <stdio.h>
 #include <stdlib.h>
-
-/**
- * Struct to hold data relevant to a point in time when LiDAR data is collected.
- *
- * Fields:
- *  lidar_reading: integer reading returned from LiDAR, representing distance to nearest object at an angle.
- *  x_position: total x distance covered by the car, returned from the encoder.
- *  servo_setting: setting that the servos should move to, as determined from solely the LiDAR data (w/o feedback loop)
- */
-typedef struct
-{
-    uint16_t lidar_reading;
-    uint16_t x_position;
-    int servo_setting_left;
-    int servo_setting_right;
-} LidarData;
 
 typedef struct
 {
@@ -72,6 +60,8 @@ typedef struct
 
 Queue q_0;
 Queue q_1;
+
+static uint64_t lastMicros; // for keeping track of how long it's been since we last called for an update to the suspension
 
 /**
  * Initializes the queue.
@@ -370,6 +360,7 @@ static void lidarTaskFunc(void *)
 {
     while (true)
     {
+        uint64_t nowMicros = to_us_since_boot(get_absolute_time());
         ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
 
         uint16_t dist_mm0 = (lidar0Buffer[3] << 8) | lidar0Buffer[2];
@@ -414,37 +405,82 @@ static void lidarTaskFunc(void *)
 
         if (q_0.numPoints == MAX_QUEUE_SIZE)
         {                              // if we have enough data to warrant making changes
-            // if (variance0 > TOLERANCE) // if the right wheels need to make adjustments
-            // {
+            if (variance0 > TOLERANCE) // if the right wheels need to make adjustments
+            {
+                // get the current dt since a suspension update was last called
+                uint64_t nowMicros = to_us_since_boot(get_absolute_time());
+                float dt = (nowMicros - lastMicros) / 1000000.0; // Convert to milliseconds
+                lastMicros = nowMicros;
+
+                // get imu data
+                imuFiltered_t imuFiltered;
+                imuGetFiltered(&imuFiltered);
+
+                float zP = halfL * sinf(imuFiltered.pitch);
+                float zR = halfW * sinf(imuFiltered.roll);
+
+                float vzP = halfL * imuFiltered.Vpitch; // sin(x) = x
+                float vzR = halfW * imuFiltered.Vroll;  // sin(x) = x
+
+                LidarData lidar = peek(&q_0);
                 // map values to amt for servos to move
+                int servo_setting_num;
                 if (q_0.counter == 0)
                 {
-                    LidarData data = peek(&q_0);
-                    data.servo_setting_right= mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1].lidar_reading);
-                    printf("new servo setting: %d\n", data.servo_setting_right);
+                    servo_setting_num = mapLidarToServo(q_0.data[MAX_QUEUE_SIZE - 1].lidar_reading);
                 }
                 else
-                {;
-                    LidarData data = peek(&q_0);
-                    data.servo_setting_right= mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
-                    printf("new servo setting: %d\n", data.servo_setting_right);
+                {
+                    servo_setting_num = mapLidarToServo(q_0.data[q_0.counter - 1].lidar_reading);
                 }
+
+                // create suspension data to send to control loop
+                // one for front wheel and one for back wheel (of this side)
+                suspensionData_t suspensionDataFront = {(ServoID)0, -300, 0, servo_setting_num};
+                suspensionData_t suspensionDataBack = {(ServoID)2, -500, 0, servo_setting_num};
+
+                // call feedback function to send this lidar data over
+                suspensionFeedback(&suspensionDataFront, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidar);
+                suspensionFeedback(&suspensionDataBack, dt, -zP - zR, imuFiltered.Vz - vzP - vzR, lidar);
             }
-            // else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
-            // {
+            else if (variance1 > TOLERANCE) // if the left wheels need to make adjustments
+            {
+                // get the current dt since a suspension update was last called
+                uint64_t nowMicros = to_us_since_boot(get_absolute_time());
+                float dt = (nowMicros - lastMicros) / 1000000.0; // Convert to milliseconds
+                lastMicros = nowMicros;
+
+                // get imu data
+                imuFiltered_t imuFiltered;
+                imuGetFiltered(&imuFiltered);
+
+                float zP = halfL * sinf(imuFiltered.pitch);
+                float zR = halfW * sinf(imuFiltered.roll);
+
+                float vzP = halfL * imuFiltered.Vpitch; // sin(x) = x
+                float vzR = halfW * imuFiltered.Vroll;  // sin(x) = x
+
+                // create suspension data to send to control loop
+                // one for front wheel and one for back wheel (of this side)
+                LidarData lidar = peek(&q_1);
+                // map values to amt for servos to move
+                int servo_setting_num;
                 if (q_1.counter == 0)
                 {
-                    LidarData data = peek(&q_1);
-                    data.servo_setting_left= mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1].lidar_reading);
-                    printf("new servo setting: %d\n", data.servo_setting_left);
+                    servo_setting_num = mapLidarToServo(q_1.data[MAX_QUEUE_SIZE - 1].lidar_reading);
                 }
                 else
                 {
-                    LidarData data = peek(&q_1);
-                    data.servo_setting_left= mapLidarToServo(q_1.data[q_1.counter - 1].lidar_reading);
-                    printf("new servo setting: %d\n", data.servo_setting_left);
+                    servo_setting_num = mapLidarToServo(q_1.data[q_1.counter - 1].lidar_reading);
                 }
-            // }
-       //
+
+                suspensionData_t suspensionDataFront = {(ServoID)1, -300, 0, servo_setting_num};
+                suspensionData_t suspensionDataBack = {(ServoID)3, -500, 0, servo_setting_num};
+
+                // call feedback function to send this lidar data over
+                suspensionFeedback(&suspensionDataFront, dt, zP + zR, imuFiltered.Vz + vzP + vzR, lidar);
+                suspensionFeedback(&suspensionDataBack, dt, -zP + zR, imuFiltered.Vz - vzP + vzR, lidar);
+            }
+        }
     }
 }
