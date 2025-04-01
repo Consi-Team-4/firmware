@@ -13,9 +13,9 @@
 
 
 static substep_state_t state;
-const PIO pio = pio0;
-const uint sm = 0;
-const uint ENCODER_PIN = 5; // Pin D10
+static const PIO pio = pio0;
+static const uint sm = 0;
+static const uint ENCODER_PIN = 5; // Pin D10
 
 static uint64_t prevReadIrqMicros;
 

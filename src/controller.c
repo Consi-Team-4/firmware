@@ -54,7 +54,7 @@ static LidarQueue_t *qL; // Left side
 static uint indexFL;
 static uint indexBL;
 
-float lidarKP = 0;
+float lidarKP = 10000;
 
 const float lidarOffset = 0.040;
 

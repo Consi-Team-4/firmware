@@ -11,6 +11,7 @@ add_executable(${ProjectName}
     simple_encoder_substep.c
     imu.c
     lidar.c
+    bluetooth.c
 
     # Tasks: Active components
     console.c
@@ -26,6 +27,7 @@ add_executable(${ProjectName}
 # PIO header generation (adjust if you're using more .pio files)
 pico_generate_pio_header(${ProjectName}
     ${CMAKE_CURRENT_LIST_DIR}/simple_encoder_substep.pio
+    ${CMAKE_CURRENT_LIST_DIR}/uart_rx.pio
 )
 
 # Include directories

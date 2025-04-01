@@ -99,7 +99,7 @@ void lidarInstSetup(uart_inst_t *uartInst, uint txPin, uint rxPin, void(*isrFunc
 
 void lidarSetup()
 {
-    lidarHighpass = timeConstantToDecayFactor(0.2);
+    lidarHighpass = timeConstantToDecayFactor(1.0);
 
     // set up both of the lidars and the queues to hold their data
     lidarInstSetup(LIDAR0_UART, LIDAR0_TX_PIN, LIDAR0_RX_PIN, &uart0RxISR);
