@@ -322,6 +322,7 @@ void consoleTaskFunc(void *) {
 
                     default: if (input[1]) { printf("Unknown command S%c", input[1]); }
                 }
+                break;
             }
             
             case 'M': { // Misc

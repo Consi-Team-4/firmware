@@ -37,13 +37,19 @@ int main()
     log_init();
     log_printf(LOG_INFO, "System startup complete.");
 
-    
+    printf("Entering encoder setup!");
     encoderSetup();
+    printf("Entering servo setup!");
     servoSetup();
+    printf("Entering imu setup!");
     imuSetup();
+    printf("Entering lidar setup!");
     lidarSetup();
+    printf("Entering controller setup!");
     controllerSetup();
+    printf("Entering console setup!");
     consoleSetup();
+    printf("Entering heartbeat setup!");
     heartbeatSetup();
 
     // Wait for red start button pin to be pressed

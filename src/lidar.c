@@ -79,6 +79,11 @@ void lidarSetK(float highpassTau) {
     lidarHighpass = timeConstantToDecayFactor(highpassTau);
 }
 
+void lidarGetMostRecent(LidarData_t *dataR, LidarData_t *dataL) {
+    *dataR = qR.data[qR.writeIndex > 0 ? qR.writeIndex - 1 : LIDAR_QUEUE_LEN];
+    *dataL = qL.data[qL.writeIndex > 0 ? qL.writeIndex - 1 : LIDAR_QUEUE_LEN];
+}
+
 void lidarInstSetup(uart_inst_t *uartInst, uint txPin, uint rxPin, void(*isrFunc)(void) )
 {
     uart_init(uartInst, LIDAR_BAUDRATE);
@@ -257,7 +262,7 @@ static void lidarTaskFunc(void *)
             float x = encoderPosition + (0.001 * dist_mm*cosP);
             float z = 0.001 * (LIDAR_HEIGHT + dist_mm*sinP);
             
-            enqueue(&qL, z - lidar0Filtered, x);
+            enqueue(&qL, z - lidar1Filtered, x);
 
             lidar1Filtered = lidarHighpass*lidar1Filtered + (1-lidarHighpass)*z;
 

@@ -7,6 +7,7 @@
 #include "encoder.h"
 #include "controller.h"
 #include "imu.h"
+#include "lidar.h"
 
 // Dummy data values (keep others if still using dummy values for now)
 float dummyIMU_Ax = 0.0f;
@@ -37,17 +38,22 @@ void heartbeatTaskFunc(void *) {
     imuRaw_t imuRaw;
     imuFiltered_t imuFiltered;
 
+    LidarData_t dataR;
+    LidarData_t dataL;
+
     while (1) {
         encoderRead(&encoderPos, &encoderSpeed);
         encoderReadDebug(&encoderSteps, &encoderSpeed_2_20);
         controllerInfo(&setpoint, &integral, &output);
         imuGetRaw(&imuRaw);
         imuGetFiltered(&imuFiltered);
+        lidarGetMostRecent(&dataR, &dataL);
         
 
         //printf("Setpoint: % 7.3f Speed: % 7.3f Integral: % 8.3f Output: % 8.3f\n", setpoint, encoderSpeed, integral, output);
         //printf("Gx: % 7.3f Gy: % 7.3f Gz: % 7.3f Ax: % 7.3f Ay: % 7.3f Az: % 7.3f\n", imuRaw.Gx, imuRaw.Gy, imuRaw.Gz, imuRaw.Ax, imuRaw.Ay, imuRaw.Az);
-        printf("pitch: % 7.3f Vpitch: % 7.3f roll: % 7.3f Vroll: % 7.3f Vz: % 7.3f Az: % 7.3f\n", imuFiltered.pitch, imuFiltered.Vpitch, imuFiltered.roll, imuFiltered.Vroll, imuFiltered.Vz, imuRaw.Az);
+        //printf("pitch: % 7.3f Vpitch: % 7.3f roll: % 7.3f Vroll: % 7.3f Vz: % 7.3f Az: % 7.3f\n", imuFiltered.pitch, imuFiltered.Vpitch, imuFiltered.roll, imuFiltered.Vroll, imuFiltered.Vz, imuRaw.Az);
+        printf("zR: % 10.3f xR: % 10.3f zL: % 10.3f xL: % 10.3f\n", dataR.z, dataR.x, dataL.z, dataL.x);
         // printf(
         //     "[Heartbeat %d] IMU: Ax=%.2f Ay=%.2f Az=%.2f | Encoder Pos=%.2f Speed=%.2f | Servo=%.2f | Lidar=%.2f\n",
         //     count++,

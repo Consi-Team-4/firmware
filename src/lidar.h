@@ -30,4 +30,6 @@ LidarQueue_t *lidarGetQueueL();
 
 void lidarSetK(float highpassTau);
 
+void lidarGetMostRecent(LidarData_t *dataR, LidarData_t *dataL);
+
 #endif

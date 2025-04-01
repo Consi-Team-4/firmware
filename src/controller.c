@@ -47,14 +47,14 @@ const float halfWidth = 0.06; // Distance from center of axel to wheel
 static bool lidarFeedbackEnable = true;
 
 static LidarQueue_t *qR; // Right side
-uint indexFR;
-uint indexBR;
+static uint indexFR;
+static uint indexBR;
 
 static LidarQueue_t *qL; // Left side
-uint indexFL;
-uint indexBL;
+static uint indexFL;
+static uint indexBL;
 
-float lidarKP = 5000;
+float lidarKP = 0;
 
 const float lidarOffset = 0.040;
 
@@ -153,30 +153,55 @@ void feedback(TimerHandle_t xTimer) {
         if (lidarFeedbackEnable) {
             float frontX = encoderPosition - lidarOffset;
             float backX = frontX - 2*halfLength;
+            uint count;
 
-            while (qR->data[indexFR].x < frontX) {
+            count = 0;
+            while (qR->data[indexFR].x < frontX && count < LIDAR_QUEUE_LEN) {
                 indexFR++;
+                count++;
                 if (indexFR >= LIDAR_QUEUE_LEN) { indexFR = 0; }
             }
-            lidarzFR = qR->data[indexFR].z;
+            if (count < LIDAR_QUEUE_LEN) {
+                lidarzFR = qR->data[indexFR].z;
+            } else {
+                printf("FR couldn't find data!\n");
+            }
 
-            while (qL->data[indexFL].x < frontX) {
+            count = 0;
+            while (qL->data[indexFL].x < frontX && count < LIDAR_QUEUE_LEN) {
                 indexFL++;
+                count++;
                 if (indexFL >= LIDAR_QUEUE_LEN) { indexFL = 0; }
             }
-            lidarzFL = qL->data[indexFL].z;
-
-            while (qR->data[indexBR].x < backX) {
+            if (count < LIDAR_QUEUE_LEN) {
+                lidarzFL = qL->data[indexFL].z;
+            } else {
+                printf("FL couldn't find data!\n");
+            }
+            
+            count = 0;
+            while (qR->data[indexBR].x < backX && count < LIDAR_QUEUE_LEN) {
                 indexBR++;
+                count++;
                 if (indexBR >= LIDAR_QUEUE_LEN) { indexBR = 0; }
             }
-            lidarzBR = qR->data[indexBR].z;
-
-            while (qL->data[indexBL].x < backX) {
+            if (count < LIDAR_QUEUE_LEN) {
+                lidarzBR = qR->data[indexBR].z;
+            } else {
+                printf("BR couldn't find data!\n");
+            }
+            
+            count = 0;
+            while (qL->data[indexBL].x < backX && count < LIDAR_QUEUE_LEN) {
                 indexBL++;
+                count++;
                 if (indexBL >= LIDAR_QUEUE_LEN) { indexBL = 0; }
             }
-            lidarzBL = qL->data[indexBL].z;
+            if (count < LIDAR_QUEUE_LEN) {
+                lidarzBL = qL->data[indexBL].z;
+            } else {
+                printf("BL couldn't find data!\n");
+            }
         }
 
         suspensionFeedback(suspensionData + SERVO_FR, dt, zP - zR, imuFiltered.Vz + vzP - vzR, lidarzFR);
