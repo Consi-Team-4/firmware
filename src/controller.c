@@ -33,9 +33,9 @@ static float timeConstantToDecayFactor(float timeConstant) { // Time constant in
 }
 
 // P and D are tuned. I and highpass are tunedish
-static float suspensionKP = 10000;
+static float suspensionKP = 5000;
 static float suspensionKI = 10000;
-static float suspensionKD = 500;
+static float suspensionKD = 200;
 float suspensionHighpass; // setting in setup since function call
 typedef struct suspensionData_s {
     ServoID servo;
