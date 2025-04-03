@@ -27,7 +27,7 @@
 
 #define LIDAR_PERIOD_MS 10
 
-#define LIDAR_THETA 30 * M_PI / 180.0 // base angle of lidar, used for normalization
+#define LIDAR_THETA 45 * M_PI / 180.0 // base angle of lidar, used for normalization
 #define LIDAR_HEIGHT 284                         // millimeters
 
 static StaticTask_t lidarTaskBuffer;

@@ -25,10 +25,67 @@ static StackType_t consoleStackBuffer[1000];
 TaskHandle_t consoleTask;
 
 
+#define THROTTLE 19 // D7
+
+static uint64_t riseUS;
+
+
 void consoleTaskFunc(void *);
 void driveWatchdog(TimerHandle_t xTimer);
 
+
+static void throttleEdgeIrqCallback(void) {
+    BaseType_t higherPriorityTaskWoken = 0;
+
+    // This function will be called on any GPIO interrupt
+    // So we start by ignoring it if it's not the one we care about
+    bool respond = false;
+
+    if (gpio_get_irq_event_mask(THROTTLE) & GPIO_IRQ_EDGE_RISE) { // Trigger on INT1 rising edge
+        gpio_acknowledge_irq(THROTTLE, GPIO_IRQ_EDGE_RISE); // Acknowledge the request since we're responding to it
+
+        // Get time as soon as data is ready
+        riseUS = to_us_since_boot(get_absolute_time());
+        
+        // Notify imu task so it can handle the I2C
+    } else if (gpio_get_irq_event_mask(THROTTLE) & GPIO_IRQ_EDGE_FALL) {
+        gpio_acknowledge_irq(THROTTLE, GPIO_IRQ_EDGE_FALL);
+
+        uint64_t lengthUS = to_us_since_boot(get_absolute_time()) - riseUS;
+        
+        int signal = lengthUS - 1500;
+        signal *= -1;
+
+        if (signal > 0) {
+            escEnable(true);
+            escSetSetpoint(signal * 0.0018);
+        } else {
+            escEnable(false);
+            servoWrite(ESC, signal);
+        }
+    }
+    return;
+}
+
 void consoleSetup() {
+
+    // Initialize INT1 pin
+    gpio_init(THROTTLE);
+    gpio_set_dir(THROTTLE, GPIO_IN);
+    gpio_pull_up(THROTTLE);
+
+    // Hook up the IRQ
+    irq_add_shared_handler(IO_IRQ_BANK0, throttleEdgeIrqCallback, PICO_SHARED_IRQ_HANDLER_DEFAULT_ORDER_PRIORITY);
+
+    // Make the pin trigger the IRQ
+    gpio_set_irq_enabled(THROTTLE, GPIO_IRQ_EDGE_RISE|GPIO_IRQ_EDGE_FALL, true);
+
+    // Enable IRQ
+    irq_set_enabled(IO_IRQ_BANK0, true);
+
+
+
+
     consoleTask = xTaskCreateStatic(consoleTaskFunc, "console", sizeof(consoleStackBuffer)/sizeof(StackType_t), NULL, 2, consoleStackBuffer, &consoleTaskBuffer);
 
     driveTimer = xTimerCreateStatic("feedback", pdMS_TO_TICKS(10), pdTRUE, NULL, driveWatchdog, &driveTimerBuffer);

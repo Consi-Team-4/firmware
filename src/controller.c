@@ -56,7 +56,7 @@ static uint indexBL;
 
 float lidarKP = 10000;
 
-const float lidarOffset = 0.040;
+const float lidarOffset = 0.100;
 
 
 static StaticTimer_t feedbackTimerBuffer;
