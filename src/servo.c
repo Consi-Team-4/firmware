@@ -38,7 +38,7 @@ static const bool SERVO_INVERT[SERVO_COUNT] = {
     [SERVO_FL]      = false,
     [SERVO_BR]      = false,
     [SERVO_BL]      = true,
-    [ESC]           = false,
+    [ESC]           = true,
     [SERVO_STEER]   = false,
 };
 
