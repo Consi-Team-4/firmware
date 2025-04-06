@@ -56,7 +56,7 @@ static uint indexBL;
 
 float lidarKP = 10000;
 
-const float lidarOffset = 0.0;
+const float lidarOffset = -0.020;
 
 
 static StaticTimer_t feedbackTimerBuffer;
@@ -241,10 +241,10 @@ void suspensionFeedback(suspensionData_t *data, float dt, float z, float vz, flo
 
     data->integral = suspensionHighpass * data->integral + suspensionKI * (-z) * dt;
 
-// Prevent integral windup
-// Limiting such that (maxPosition-neutralPosition) >= suspensionKP*(-maxP) + data->integral + suspensionKD*(-maxD)
-#define maxP 0.1
-#define maxD 1
+    // Prevent integral windup
+    // Limiting such that (maxPosition-neutralPosition) >= suspensionKP*(-maxP) + data->integral + suspensionKD*(-maxD)
+    #define maxP 0.1
+    #define maxD 1
     const float maxIntegral = limits.maxPosition - data->neutralPosition + suspensionKP * maxP + suspensionKD * maxD;
     const float minIntegral = limits.minPosition - data->neutralPosition + suspensionKP * (-maxP) + suspensionKD * (-maxD);
     if (data->integral > maxIntegral) { data->integral = maxIntegral; }

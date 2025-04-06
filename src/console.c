@@ -58,9 +58,11 @@ static void throttleEdgeIrqCallback(void) {
 
         if (signal > 0) {
             escEnable(true);
+            //suspensionLidarEnable(true);
             escSetSetpoint(signal * 0.0018);
         } else {
             escEnable(false);
+            //suspensionLidarEnable(false);
             servoWrite(ESC, signal);
         }
     }
@@ -445,9 +447,11 @@ void consoleRunCommand(char *input) {
 
                     if (intThrottle > 0) {
                         escEnable(true);
+                        //suspensionLidarEnable(true);
                         escSetSetpoint(intThrottle / 1000.0);
                     } else {
                         escEnable(false);
+                        //suspensionLidarEnable(false);
                         servoWrite(ESC, intThrottle);
                     }
 
